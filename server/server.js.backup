@@ -1,0 +1,443 @@
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const { Pool } = require('pg');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/budget_app',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+app.use(cors());
+app.use(express.json());
+
+// Middleware to verify JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) return res.sendStatus(401);
+  
+  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+// ============ AUTH ROUTES ============
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, email, password, currency } = req.body;
+    
+    // Check if user exists
+    const userExists = await pool.query(
+      'SELECT * FROM users WHERE email =  OR username = ',
+      [email, username]
+    );
+    
+    if (userExists.rows.length > 0) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+    
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+    
+    // Create user
+    const newUser = await pool.query(
+      'INSERT INTO users (username, email, password_hash, currency) VALUES (, , , ) RETURNING id, username, email, currency',
+      [username, email, password_hash, currency || 'USD']
+    );
+    
+    // Create default settings (matches Sheet 2)
+    await pool.query(
+      'INSERT INTO settings (user_id, setting_key, setting_value) VALUES (, , ), (, , ), (, , )',
+      [newUser.rows[0].id, 'year', new Date().getFullYear().toString(), 'starting_balance', '0', 'pay_frequency', 'Monthly']
+    );
+    
+    const token = jwt.sign(
+      { id: newUser.rows[0].id, username: newUser.rows[0].username },
+      process.env.JWT_SECRET || 'your-secret-key'
+    );
+    
+    res.json({ token, user: newUser.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const user = await pool.query(
+      'SELECT * FROM users WHERE email = ',
+      [email]
+    );
+    
+    if (user.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+    
+    const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
+    if (!validPassword) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+    
+    const token = jwt.sign(
+      { id: user.rows[0].id, username: user.rows[0].username },
+      process.env.JWT_SECRET || 'your-secret-key'
+    );
+    
+    res.json({
+      token,
+      user: {
+        id: user.rows[0].id,
+        username: user.rows[0].username,
+        email: user.rows[0].email,
+        currency: user.rows[0].currency
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ============ SETTINGS ROUTES (Sheet 2) ============
+app.get('/api/settings', authenticateToken, async (req, res) => {
+  try {
+    const settings = await pool.query(
+      'SELECT setting_key, setting_value FROM settings WHERE user_id = ',
+      [req.user.id]
+    );
+    res.json(settings.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/settings', authenticateToken, async (req, res) => {
+  try {
+    const { currency, year, starting_balance, pay_frequency } = req.body;
+    
+    // Update user currency
+    await pool.query('UPDATE users SET currency =  WHERE id = ', [currency, req.user.id]);
+    
+    // Update settings
+    const settings = [
+      ['year', year],
+      ['starting_balance', starting_balance],
+      ['pay_frequency', pay_frequency]
+    ];
+    
+    for (const [key, value] of settings) {
+      await pool.query(
+        'INSERT INTO settings (user_id, setting_key, setting_value) VALUES (, , ) ON CONFLICT (user_id, setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value',
+        [req.user.id, key, value]
+      );
+    }
+    
+    res.json({ message: 'Settings updated' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ INCOME ROUTES (Sheet 3) ============
+app.get('/api/income', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    let query = 'SELECT * FROM income WHERE user_id = ';
+    const params = [req.user.id];
+    
+    if (month && year) {
+      query += ' AND month =  AND year =  ORDER BY date DESC';
+      params.push(month, year);
+    } else {
+      query += ' ORDER BY date DESC LIMIT 100';
+    }
+    
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/income', authenticateToken, async (req, res) => {
+  try {
+    const { date, source, category, amount } = req.body;
+    const result = await pool.query(
+      'INSERT INTO income (user_id, date, source, category, amount) VALUES (, , , , ) RETURNING *',
+      [req.user.id, date, source, category, amount]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ EXPENSE ROUTES (Sheet 4) ============
+app.get('/api/expenses', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    let query = 'SELECT * FROM expenses WHERE user_id = ';
+    const params = [req.user.id];
+    
+    if (month && year) {
+      query += ' AND month =  AND year =  ORDER BY date DESC';
+      params.push(month, year);
+    } else {
+      query += ' ORDER BY date DESC LIMIT 100';
+    }
+    
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/expenses', authenticateToken, async (req, res) => {
+  try {
+    const { date, name, category, type, amount } = req.body;
+    const result = await pool.query(
+      'INSERT INTO expenses (user_id, date, name, category, type, amount) VALUES (, , , , , ) RETURNING *',
+      [req.user.id, date, name, category, type, amount]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ BUDGET ROUTES (Sheet 5) ============
+app.get('/api/budgets', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const budgets = await pool.query(
+      'SELECT * FROM budgets WHERE user_id =  AND month =  AND year = ',
+      [req.user.id, month || new Date().getMonth() + 1, year || new Date().getFullYear()]
+    );
+    res.json(budgets.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/budgets', authenticateToken, async (req, res) => {
+  try {
+    const { category, budget_amount, month, year } = req.body;
+    const result = await pool.query(
+      'INSERT INTO budgets (user_id, category, budget_amount, month, year) VALUES (, , , , ) ON CONFLICT (user_id, category, month, year) DO UPDATE SET budget_amount = EXCLUDED.budget_amount RETURNING *',
+      [req.user.id, category, budget_amount, month, year]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ MONTHLY DASHBOARD (Sheet 7) ============
+app.get('/api/dashboard/monthly', authenticateToken, async (req, res) => {
+  try {
+    const { year } = req.query;
+    const queryYear = year || new Date().getFullYear();
+    
+    const monthlyData = await pool.query(
+      SELECT 
+        EXTRACT(MONTH FROM date) as month_num,
+        TO_CHAR(date, 'Month') as month,
+        SUM(CASE WHEN table_name = 'income' THEN amount ELSE 0 END) as income,
+        SUM(CASE WHEN table_name = 'expenses' THEN amount ELSE 0 END) as expenses
+      FROM (
+        SELECT date, amount, 'income' as table_name FROM income WHERE user_id =  AND EXTRACT(YEAR FROM date) = 
+        UNION ALL
+        SELECT date, amount, 'expenses' as table_name FROM expenses WHERE user_id =  AND EXTRACT(YEAR FROM date) = 
+      ) as combined
+      GROUP BY EXTRACT(MONTH FROM date), TO_CHAR(date, 'Month')
+      ORDER BY month_num
+    , [req.user.id, queryYear]);
+    
+    const result = monthlyData.rows.map(row => ({
+      ...row,
+      savings: parseFloat(row.income) - parseFloat(row.expenses)
+    }));
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ ANNUAL SUMMARY (Sheet 6) ============
+app.get('/api/dashboard/annual', authenticateToken, async (req, res) => {
+  try {
+    const { year } = req.query;
+    const queryYear = year || new Date().getFullYear();
+    
+    const totals = await pool.query(
+      SELECT 
+        COALESCE((SELECT SUM(amount) FROM income WHERE user_id =  AND EXTRACT(YEAR FROM date) = ), 0) as total_income,
+        COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id =  AND EXTRACT(YEAR FROM date) = ), 0) as total_expenses
+    , [req.user.id, queryYear]);
+    
+    const totalIncome = parseFloat(totals.rows[0].total_income);
+    const totalExpenses = parseFloat(totals.rows[0].total_expenses);
+    const netSavings = totalIncome - totalExpenses;
+    const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
+    
+    res.json({
+      total_income: totalIncome,
+      total_expenses: totalExpenses,
+      net_savings: netSavings,
+      savings_rate: savingsRate
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ NET WORTH TRACKER (Sheet 8 - PREMIUM) ============
+app.get('/api/networth', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM net_worth WHERE user_id =  ORDER BY year, month',
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/networth', authenticateToken, async (req, res) => {
+  try {
+    const { month, year, assets, liabilities } = req.body;
+    const result = await pool.query(
+      'INSERT INTO net_worth (user_id, month, year, assets, liabilities) VALUES (, , , , ) ON CONFLICT (user_id, month, year) DO UPDATE SET assets = EXCLUDED.assets, liabilities = EXCLUDED.liabilities RETURNING *',
+      [req.user.id, month, year, assets, liabilities]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ SAVINGS GOALS (Sheet 9 - PREMIUM) ============
+app.get('/api/goals', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM savings_goals WHERE user_id =  ORDER BY target_date',
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/goals', authenticateToken, async (req, res) => {
+  try {
+    const { goal_name, target_amount, saved_amount, target_date } = req.body;
+    const result = await pool.query(
+      'INSERT INTO savings_goals (user_id, goal_name, target_amount, saved_amount, target_date) VALUES (, , , , ) RETURNING *',
+      [req.user.id, goal_name, target_amount, saved_amount || 0, target_date]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/goals/:id/progress', authenticateToken, async (req, res) => {
+  try {
+    const { saved_amount } = req.body;
+    const result = await pool.query(
+      'UPDATE savings_goals SET saved_amount =  WHERE id =  AND user_id =  RETURNING *',
+      [saved_amount, req.params.id, req.user.id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ SUBSCRIPTION TRACKER (Sheet 10 - HIGH VALUE) ============
+app.get('/api/subscriptions', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM subscriptions WHERE user_id =  ORDER BY next_payment_date',
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/subscriptions', authenticateToken, async (req, res) => {
+  try {
+    const { service_name, cost, billing_cycle, next_payment_date, category } = req.body;
+    const result = await pool.query(
+      'INSERT INTO subscriptions (user_id, service_name, cost, billing_cycle, next_payment_date, category) VALUES (, , , , , ) RETURNING *',
+      [req.user.id, service_name, cost, billing_cycle, next_payment_date, category]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/subscriptions/upcoming', authenticateToken, async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const result = await pool.query(
+      'SELECT * FROM subscriptions WHERE user_id =  AND next_payment_date BETWEEN CURRENT_DATE AND CURRENT_DATE + ::int ORDER BY next_payment_date',
+      [req.user.id, days]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ EXPENSE CATEGORIES (for pie charts) ============
+app.get('/api/expenses/categories', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const result = await pool.query(
+      'SELECT category, SUM(amount) as total FROM expenses WHERE user_id =  AND EXTRACT(MONTH FROM date) =  AND EXTRACT(YEAR FROM date) =  GROUP BY category',
+      [req.user.id, month || new Date().getMonth() + 1, year || new Date().getFullYear()]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Health check
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'healthy', database: 'connected', timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.json({ status: 'healthy', database: 'disconnected', timestamp: new Date().toISOString() });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(Premium Budget App server running on port );
+  console.log(http://localhost:/api/health);
+});

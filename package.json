@@ -1,0 +1,17 @@
+{
+    "name":  "budget-app",
+    "version":  "1.0.0",
+    "description":  "Full-stack budget tracking application",
+    "scripts":  {
+                    "install-server":  "cd server \u0026\u0026 npm install",
+                    "install-client":  "cd client \u0026\u0026 npm install",
+                    "install-all":  "npm install \u0026\u0026 npm run install-server \u0026\u0026 npm run install-client",
+                    "server":  "cd server \u0026\u0026 npm run dev",
+                    "client":  "cd client \u0026\u0026 npm start",
+                    "dev":  "concurrently \"npm run server\" \"npm run client\""
+                },
+    "devDependencies":  {
+                            "concurrently":  "^8.2.2"
+                        },
+    "type":  "module"
+}
