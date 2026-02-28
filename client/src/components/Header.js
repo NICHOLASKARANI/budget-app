@@ -7,58 +7,44 @@ export default function Header() {
   const { user, logout } = useAuth();
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <div className="px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-800">
+    <header style={{
+      backgroundColor: 'white',
+      borderBottom: '1px solid #e5e7eb',
+      position: 'sticky',
+      top: 0,
+      zIndex: 10
+    }}>
+      <div style={{ padding: '1rem 1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1f2937' }}>
             Welcome back, {user?.username}!
           </h1>
           
-          <Menu as="div" className="relative">
-            <Menu.Button className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-lg p-1">
-              <UserCircleIcon className="h-8 w-8 text-gray-400 hover:text-gray-600" />
-              <span className="hidden sm:block text-sm font-medium text-gray-700">{user?.email}</span>
-            </Menu.Button>
+          <div style={{ position: 'relative' }}>
+            <button style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <UserCircleIcon style={{ height: '2rem', width: '2rem', color: '#9ca3af' }} />
+              <span style={{ display: 'none', '@media (min-width: 640px)': { display: 'block' }, fontSize: '0.875rem', color: '#374151' }}>
+                {user?.email}
+              </span>
+            </button>
             
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <Menu.Items className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200 focus:outline-none">
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => window.location.href = '/settings'}
-                      className={${
-                        active ? 'bg-gray-100' : ''
-                      } flex items-center w-full px-4 py-2 text-sm text-gray-700}
-                    >
-                      <Cog6ToothIcon className="mr-3 h-5 w-5 text-gray-400" />
-                      Settings
-                    </button>
-                  )}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={logout}
-                      className={${
-                        active ? 'bg-gray-100' : ''
-                      } flex items-center w-full px-4 py-2 text-sm text-gray-700}
-                    >
-                      <ArrowLeftOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400" />
-                      Sign out
-                    </button>
-                  )}
-                </Menu.Item>
-              </Menu.Items>
-            </Transition>
-          </Menu>
+            <div style={{ position: 'absolute', right: 0, marginTop: '0.5rem', width: '12rem', backgroundColor: 'white', borderRadius: '0.375rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
+              <button
+                onClick={() => window.location.href = '/settings'}
+                style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#374151' }}
+              >
+                <Cog6ToothIcon style={{ marginRight: '0.75rem', height: '1.25rem', width: '1.25rem', color: '#9ca3af' }} />
+                Settings
+              </button>
+              <button
+                onClick={logout}
+                style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#374151' }}
+              >
+                <ArrowLeftOnRectangleIcon style={{ marginRight: '0.75rem', height: '1.25rem', width: '1.25rem', color: '#9ca3af' }} />
+                Sign out
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </header>

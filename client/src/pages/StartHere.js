@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlayIcon, CurrencyDollarIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
@@ -6,7 +6,6 @@ import { useAuth } from '../context/AuthContext';
 export default function StartHere() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
 
   const steps = [
     {
@@ -35,6 +34,11 @@ export default function StartHere() {
     }
   ];
 
+  // Helper function to get step circle class
+  const getStepCircleClass = (color) => {
+    return 'flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r ' + color + ' text-white font-bold text-lg shadow-lg transform transition-transform group-hover:scale-110';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -54,13 +58,9 @@ export default function StartHere() {
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Get Started in 3 Simple Steps</h2>
           
           <div className="space-y-8">
-            {steps.map((step, index) => (
+            {steps.map((step) => (
               <div key={step.number} className="relative flex items-start group">
-                <div className={
-                  flex items-center justify-center w-10 h-10 rounded-full 
-                  bg-gradient-to-r  text-white font-bold text-lg
-                  shadow-lg transform transition-transform group-hover:scale-110
-                }>
+                <div className={getStepCircleClass(step.color)}>
                   {step.number}
                 </div>
                 
@@ -70,7 +70,7 @@ export default function StartHere() {
                   
                   <button
                     onClick={step.action}
-                    className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                    className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
                     Go to {step.title}
                     <ArrowRightIcon className="ml-2 h-4 w-4" />

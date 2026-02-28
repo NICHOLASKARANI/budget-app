@@ -3,7 +3,7 @@ import { useQuery } from 'react-query';
 import {
   CurrencyDollarIcon,
   CreditCardIcon,
-  ArrowTrendingUpIcon,
+  TrendingUpIcon,
   PresentationChartLineIcon
 } from '@heroicons/react/24/outline';
 import {
@@ -53,8 +53,8 @@ export default function AnnualSummary() {
   }
 
   const savings = (summary?.annual?.total_income || 0) - (summary?.annual?.total_expenses || 0);
-  const savingsRate = summary?.annual?.total_income > 0
-    ? ((savings / summary.annual.total_income) * 100).toFixed(1)
+  const savingsRate = summary?.annual?.total_income > 0 
+    ? ((savings / summary.annual.total_income) * 100).toFixed(1) 
     : '0';
 
   // Custom label renderer for pie chart
@@ -126,7 +126,7 @@ export default function AnnualSummary() {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0 bg-green-100 rounded-lg p-3">
-                  <ArrowTrendingUpIcon className="h-6 w-6 text-green-600" />
+                  <TrendingUpIcon className="h-6 w-6 text-green-600" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
@@ -194,9 +194,13 @@ export default function AnnualSummary() {
                     dataKey="total"
                     nameKey="category"
                   >
-                    {summary?.categories?.map((entry, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                    {summary?.categories?.map((entry, index) => {
+                      // Using string concatenation instead of template literal
+                      const cellKey = 'cell-' + index;
+                      return (
+                        <Cell key={cellKey} fill={COLORS[index % COLORS.length]} />
+                      );
+                    })}
                   </Pie>
                   <Tooltip />
                 </PieChart>
