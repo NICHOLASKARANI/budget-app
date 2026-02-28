@@ -1,9 +1,28 @@
 ﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckIcon } from '@heroicons/react/24/outline';
+import SubscriptionCheckout from '../components/subscription/SubscriptionCheckout';
 
 export default function Pricing() {
   const [billingInterval, setBillingInterval] = useState('monthly');
+
+  // Helper function for billing toggle button class
+  const getBillingButtonClass = (interval) => {
+    const baseClass = 'relative w-24 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500';
+    if (billingInterval === interval) {
+      return baseClass + ' bg-white shadow-sm text-gray-900';
+    }
+    return baseClass + ' text-gray-700';
+  };
+
+  // Helper function for card class
+  const getCardClass = (isMostPopular) => {
+    const baseClass = 'relative bg-white border rounded-lg shadow-sm divide-y divide-gray-200';
+    if (isMostPopular) {
+      return baseClass + ' border-indigo-500 shadow-xl';
+    }
+    return baseClass + ' border-gray-200';
+  };
 
   const tiers = [
     {
@@ -18,6 +37,7 @@ export default function Pricing() {
         'Email Support',
         'Basic Reports'
       ],
+      priceId: { monthly: 'price_monthly', annual: 'price_annual_monthly' },
       cta: 'Start Monthly Plan',
       mostPopular: false
     },
@@ -35,6 +55,7 @@ export default function Pricing() {
         'Data Export (PDF/Excel)',
         'Email Notifications'
       ],
+      priceId: { monthly: 'price_annual_monthly', annual: 'price_annual_yearly' },
       cta: 'Get Annual Plan',
       mostPopular: true
     },
@@ -51,6 +72,7 @@ export default function Pricing() {
         'Custom Reports',
         'Data Backup & Recovery'
       ],
+      priceId: { monthly: 'price_lifetime', annual: 'price_lifetime' },
       cta: 'Get Lifetime Access',
       mostPopular: false
     }
@@ -58,6 +80,10 @@ export default function Pricing() {
 
   const currentPrice = (tier) => {
     return billingInterval === 'monthly' ? tier.price.monthly : tier.price.annual;
+  };
+
+  const currentPriceId = (tier) => {
+    return billingInterval === 'monthly' ? tier.priceId.monthly : tier.priceId.annual;
   };
 
   return (
@@ -78,17 +104,13 @@ export default function Pricing() {
           <div className="relative bg-gray-100 rounded-lg p-1 flex">
             <button
               onClick={() => setBillingInterval('monthly')}
-              className={${
-                billingInterval === 'monthly' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'
-              } relative w-24 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500}
+              className={getBillingButtonClass('monthly')}
             >
               Monthly
             </button>
             <button
               onClick={() => setBillingInterval('annual')}
-              className={${
-                billingInterval === 'annual' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'
-              } relative w-24 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500}
+              className={getBillingButtonClass('annual')}
             >
               Annual
             </button>
@@ -100,7 +122,7 @@ export default function Pricing() {
           {tiers.map((tier) => (
             <div
               key={tier.name}
-              className={elative bg-white border rounded-lg shadow-sm divide-y divide-gray-200 }
+              className={getCardClass(tier.mostPopular)}
             >
               {tier.mostPopular && (
                 <div className="absolute top-0 -translate-y-1/2 left-1/2 transform -translate-x-1/2">
@@ -118,12 +140,21 @@ export default function Pricing() {
                   <span className="text-base font-medium text-gray-500">/{billingInterval === 'monthly' ? 'mo' : 'yr'}</span>
                 </p>
                 
-                <Link
-                  to="/register"
-                  className={mt-8 block w-full py-3 px-4 border border-transparent rounded-md text-center font-medium }
-                >
-                  {tier.cta}
-                </Link>
+                {tier.name === 'Monthly' ? (
+                  <Link
+                    to="/register"
+                    className={'mt-8 block w-full py-3 px-4 border border-transparent rounded-md text-center font-medium ' + (tier.mostPopular ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100')}
+                  >
+                    {tier.cta}
+                  </Link>
+                ) : (
+                  <div className="mt-8">
+                    <SubscriptionCheckout 
+                      priceId={currentPriceId(tier)}
+                      planName={tier.name}
+                    />
+                  </div>
+                )}
               </div>
               
               <div className="px-6 pt-6 pb-8">
