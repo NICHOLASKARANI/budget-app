@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+﻿import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -11,10 +11,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
 
+  const apiUrl = process.env.REACT_APP_API_URL || 'https://budget-app-server-two.vercel.app/api';
+
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // Verify token and get user data
+      axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
       fetchUser();
     } else {
       setLoading(false);
@@ -23,7 +24,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/auth/me`);
+      const response = await axios.get(apiUrl + '/auth/me');
       setUser(response.data);
     } catch (error) {
       logout();
@@ -34,14 +35,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
+      const response = await axios.post(apiUrl + '/auth/login', {
         email,
         password
       });
       
       const { token, user } = response.data;
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
       setToken(token);
       setUser(user);
       toast.success('Logged in successfully!');
@@ -54,7 +55,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password, currency) => {
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/register`, {
+      const response = await axios.post(apiUrl + '/auth/register', {
         username,
         email,
         password,
@@ -63,7 +64,7 @@ export const AuthProvider = ({ children }) => {
       
       const { token, user } = response.data;
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
       setToken(token);
       setUser(user);
       toast.success('Registered successfully!');
