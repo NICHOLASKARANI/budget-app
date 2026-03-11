@@ -16,7 +16,8 @@ export default function Login() {
     const success = await login(email, password);
     setIsLoading(false);
     if (success) {
-      navigate('/start-here');
+      // Redirect to app/start-here after successful login
+      navigate('/app/start-here');
     }
   };
 
@@ -85,28 +86,6 @@ export default function Login() {
               </Link>
             </div>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Premium Features</span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              {['10 Sheets', 'Charts', 'Multi-currency', 'Export'].map((feature) => (
-                <div key={feature} className="flex items-center text-sm text-gray-600">
-                  <svg className="h-4 w-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {feature}
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

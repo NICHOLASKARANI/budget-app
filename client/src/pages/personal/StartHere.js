@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function StartHere() {
   const { user } = useAuth();
@@ -14,19 +14,19 @@ export default function StartHere() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-2">Step 1: Set Currency</h2>
           <p className="text-gray-500 mb-4">Choose your preferred currency</p>
-          <Link to="/app/settings" className="text-indigo-600 hover:text-indigo-800">Go to Settings →</Link>
+          <Link to="/settings" className="text-indigo-600 hover:text-indigo-800">Go to Settings →</Link>
         </div>
         
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-2">Step 2: Add Income</h2>
           <p className="text-gray-500 mb-4">Track your income sources</p>
-          <Link to="/app/income" className="text-indigo-600 hover:text-indigo-800">Add Income →</Link>
+          <Link to="/personal/income" className="text-indigo-600 hover:text-indigo-800">Add Income →</Link>
         </div>
         
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-2">Step 3: Track Expenses</h2>
           <p className="text-gray-500 mb-4">Monitor your spending</p>
-          <Link to="/app/expenses" className="text-indigo-600 hover:text-indigo-800">Add Expenses →</Link>
+          <Link to="/personal/expenses" className="text-indigo-600 hover:text-indigo-800">Add Expenses →</Link>
         </div>
       </div>
     </div>
