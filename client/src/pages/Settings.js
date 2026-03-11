@@ -93,6 +93,62 @@ export default function Settings() {
     }
   };
 
+  const getTabClass = (tabId) => {
+    const baseClass = 'flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap';
+    if (activeTab === tabId) {
+      return baseClass + ' border-indigo-600 text-indigo-600';
+    }
+    return baseClass + ' border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+  };
+
+  const getCurrencyButtonClass = (currencyCode) => {
+    const baseClass = 'relative p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 transform';
+    if (settings.currency === currencyCode) {
+      return baseClass + ' border-indigo-600 bg-indigo-50 ring-4 ring-indigo-600 ring-opacity-20';
+    }
+    return baseClass + ' border-gray-200 hover:border-indigo-300 hover:bg-gray-50';
+  };
+
+  const getYearButtonClass = (year) => {
+    const baseClass = 'py-3 px-4 rounded-lg border-2 font-medium transition-all';
+    if (settings.year === year) {
+      return baseClass + ' border-indigo-600 bg-indigo-600 text-white shadow-lg';
+    }
+    return baseClass + ' border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-gray-50';
+  };
+
+  const getFrequencyButtonClass = (freq) => {
+    const baseClass = 'py-3 px-4 rounded-lg border-2 font-medium transition-all';
+    if (settings.payFrequency === freq) {
+      return baseClass + ' border-indigo-600 bg-indigo-600 text-white shadow-lg';
+    }
+    return baseClass + ' border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-gray-50';
+  };
+
+  const getLanguageButtonClass = (langCode) => {
+    const baseClass = 'p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 transform';
+    if (settings.language === langCode) {
+      return baseClass + ' border-green-600 bg-green-50 ring-4 ring-green-600 ring-opacity-20';
+    }
+    return baseClass + ' border-gray-200 hover:border-green-300 hover:bg-gray-50';
+  };
+
+  const getThemeButtonClass = (themeValue) => {
+    const baseClass = 'p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg transform';
+    if (settings.theme === themeValue) {
+      return baseClass + ' border-green-600 ring-4 ring-green-600 ring-opacity-20';
+    }
+    return baseClass + ' border-gray-200';
+  };
+
+  const getDateFormatButtonClass = (formatValue) => {
+    const baseClass = 'p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 transform';
+    if (settings.dateFormat === formatValue) {
+      return baseClass + ' border-green-600 bg-green-50 ring-4 ring-green-600 ring-opacity-20';
+    }
+    return baseClass + ' border-gray-200 hover:border-green-300 hover:bg-gray-50';
+  };
+
   const tabs = [
     { id: 'general', name: 'General', icon: CurrencyDollarIcon },
     { id: 'preferences', name: 'Preferences', icon: PaintBrushIcon },
@@ -118,11 +174,7 @@ export default function Settings() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={
-                  flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm
-                  transition-colors duration-200 whitespace-nowrap
-                  
-                }
+                className={getTabClass(tab.id)}
               >
                 <tab.icon className="h-5 w-5" />
                 <span>{tab.name}</span>
@@ -153,11 +205,7 @@ export default function Settings() {
                         <button
                           key={currency.code}
                           onClick={() => setSettings({ ...settings, currency: currency.code })}
-                          className={
-                            relative p-4 rounded-xl border-2 transition-all duration-200
-                            hover:shadow-lg hover:scale-105 transform
-                            
-                          }
+                          className={getCurrencyButtonClass(currency.code)}
                         >
                           <div className="text-3xl mb-2">{currency.flag}</div>
                           <div className="text-2xl font-bold text-gray-900 mb-1">{currency.symbol}</div>
@@ -178,10 +226,7 @@ export default function Settings() {
                         <button
                           key={year}
                           onClick={() => setSettings({ ...settings, year })}
-                          className={
-                            py-3 px-4 rounded-lg border-2 font-medium transition-all
-                            
-                          }
+                          className={getYearButtonClass(year)}
                         >
                           {year}
                         </button>
@@ -223,10 +268,7 @@ export default function Settings() {
                         <button
                           key={freq}
                           onClick={() => setSettings({ ...settings, payFrequency: freq })}
-                          className={
-                            py-3 px-4 rounded-lg border-2 font-medium transition-all
-                            
-                          }
+                          className={getFrequencyButtonClass(freq)}
                         >
                           {freq}
                         </button>
@@ -272,11 +314,7 @@ export default function Settings() {
                         <button
                           key={lang.code}
                           onClick={() => setSettings({ ...settings, language: lang.code })}
-                          className={
-                            p-4 rounded-xl border-2 transition-all duration-200
-                            hover:shadow-lg hover:scale-105 transform
-                            
-                          }
+                          className={getLanguageButtonClass(lang.code)}
                         >
                           <div className="text-3xl mb-2">{lang.flag}</div>
                           <div className="text-sm font-medium text-gray-700">{lang.name}</div>
@@ -295,12 +333,7 @@ export default function Settings() {
                         <button
                           key={theme.value}
                           onClick={() => setSettings({ ...settings, theme: theme.value })}
-                          className={
-                            p-4 rounded-xl border-2 transition-all duration-200
-                            hover:shadow-lg transform
-                            
-                            
-                          }
+                          className={getThemeButtonClass(theme.value) + ' ' + theme.class}
                         >
                           <div className="font-medium">{theme.name}</div>
                         </button>
@@ -318,11 +351,7 @@ export default function Settings() {
                         <button
                           key={format.value}
                           onClick={() => setSettings({ ...settings, dateFormat: format.value })}
-                          className={
-                            p-4 rounded-xl border-2 transition-all duration-200
-                            hover:shadow-lg hover:scale-105 transform
-                            
-                          }
+                          className={getDateFormatButtonClass(format.value)}
                         >
                           <div className="font-medium text-gray-900">{format.value}</div>
                           <div className="text-sm text-gray-500 mt-1">{format.example}</div>
@@ -355,16 +384,10 @@ export default function Settings() {
                       </div>
                       <button
                         onClick={() => setSettings({ ...settings, [item.id]: !settings[item.id] })}
-                        className={
-                          relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                          
-                        }
+                        className={'relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ' + (settings[item.id] ? 'bg-indigo-600' : 'bg-gray-300')}
                       >
                         <span
-                          className={
-                            inline-block h-6 w-6 transform rounded-full bg-white transition-transform
-                            
-                          }
+                          className={'inline-block h-6 w-6 transform rounded-full bg-white transition-transform ' + (settings[item.id] ? 'translate-x-7' : 'translate-x-1')}
                         />
                       </button>
                     </div>
@@ -389,16 +412,10 @@ export default function Settings() {
                     </div>
                     <button
                       onClick={() => setSettings({ ...settings, twoFactorAuth: !settings.twoFactorAuth })}
-                      className={
-                        relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                        
-                      }
+                      className={'relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ' + (settings.twoFactorAuth ? 'bg-indigo-600' : 'bg-gray-300')}
                     >
                       <span
-                        className={
-                          inline-block h-6 w-6 transform rounded-full bg-white transition-transform
-                          
-                        }
+                        className={'inline-block h-6 w-6 transform rounded-full bg-white transition-transform ' + (settings.twoFactorAuth ? 'translate-x-7' : 'translate-x-1')}
                       />
                     </button>
                   </div>

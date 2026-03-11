@@ -4,15 +4,64 @@ import {
   CurrencyDollarIcon, 
   ArrowTrendingUpIcon,
   CreditCardIcon,
-  CheckCircleIcon,
   SparklesIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function StartHere() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const getStepCircleClass = (step) => {
+    const baseClass = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg';
+    if (step === 1) {
+      return baseClass + ' bg-indigo-600 text-white';
+    } else if (step === 2) {
+      return baseClass + ' bg-indigo-100 text-indigo-600';
+    } else {
+      return baseClass + ' bg-gray-100 text-gray-400';
+    }
+  };
+
+  const getStepCardClass = (stepNumber) => {
+    const baseClass = 'relative group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl';
+    return baseClass;
+  };
+
+  const getStepContentClass = (step) => {
+    const baseClass = 'p-8 ';
+    if (step.number === 1) {
+      return baseClass + 'bg-blue-50';
+    } else if (step.number === 2) {
+      return baseClass + 'bg-green-50';
+    } else {
+      return baseClass + 'bg-purple-50';
+    }
+  };
+
+  const getIconContainerClass = (step) => {
+    const baseClass = 'p-4 rounded-2xl shadow-lg';
+    if (step.number === 1) {
+      return baseClass + ' bg-gradient-to-r from-blue-500 to-blue-600';
+    } else if (step.number === 2) {
+      return baseClass + ' bg-gradient-to-r from-green-500 to-green-600';
+    } else {
+      return baseClass + ' bg-gradient-to-r from-purple-500 to-purple-600';
+    }
+  };
+
+  const getButtonClass = (step) => {
+    const baseClass = 'inline-flex items-center px-6 py-3 rounded-xl font-medium transition-all duration-200 transform group-hover:scale-105 text-white shadow-lg hover:shadow-xl';
+    if (step.number === 1) {
+      return baseClass + ' bg-gradient-to-r from-blue-500 to-blue-600';
+    } else if (step.number === 2) {
+      return baseClass + ' bg-gradient-to-r from-green-500 to-green-600';
+    } else {
+      return baseClass + ' bg-gradient-to-r from-purple-500 to-purple-600';
+    }
+  };
 
   const steps = [
     {
@@ -97,10 +146,7 @@ export default function StartHere() {
           <div className="flex items-center justify-center space-x-4">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center">
-                <div className={
-                  w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg
-                  
-                }>
+                <div className={getStepCircleClass(step)}>
                   {step}
                 </div>
                 {step < 3 && (
@@ -115,10 +161,10 @@ export default function StartHere() {
 
         {/* Steps Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          {steps.map((step, index) => (
+          {steps.map((step) => (
             <div
               key={step.number}
-              className="relative group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              className={getStepCardClass(step.number)}
               onClick={step.action}
             >
               {/* Step Number */}
@@ -128,9 +174,9 @@ export default function StartHere() {
 
               {/* Main Card */}
               <div className="bg-white rounded-2xl shadow-xl overflow-hidden pt-8">
-                <div className={p-8 }>
+                <div className={getStepContentClass(step)}>
                   <div className="flex justify-center mb-6">
-                    <div className={p-4 rounded-2xl bg-gradient-to-r  shadow-lg}>
+                    <div className={getIconContainerClass(step)}>
                       <step.icon className="h-12 w-12 text-white" />
                     </div>
                   </div>
@@ -146,12 +192,7 @@ export default function StartHere() {
                         e.stopPropagation();
                         step.action();
                       }}
-                      className={
-                        inline-flex items-center px-6 py-3 rounded-xl font-medium
-                        transition-all duration-200 transform group-hover:scale-105
-                        bg-gradient-to-r  text-white shadow-lg
-                        hover:shadow-xl
-                      }
+                      className={getButtonClass(step)}
                     >
                       Get Started
                       <ArrowRightIcon className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -212,8 +253,8 @@ export default function StartHere() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((feature) => (
             <div key={feature.name} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
-              <div className={inline-flex p-3 rounded-xl  mb-4}>
-                <feature.icon className={h-6 w-6 } />
+              <div className={'inline-flex p-3 rounded-xl ' + feature.bgColor + ' mb-4'}>
+                <feature.icon className={'h-6 w-6 ' + feature.color} />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.name}</h3>
               <p className="text-gray-600 text-sm">{feature.description}</p>
@@ -238,6 +279,3 @@ export default function StartHere() {
     </div>
   );
 }
-
-// Missing ChartBarIcon import
-import { ChartBarIcon } from '@heroicons/react/24/outline';
