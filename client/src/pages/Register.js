@@ -36,7 +36,7 @@ export default function Register() {
     const success = await register(formData.username, formData.email, formData.password, formData.currency);
     setIsLoading(false);
     if (success) {
-      navigate('/app/start-here');
+      navigate('/personal/start-here');
     }
   };
 

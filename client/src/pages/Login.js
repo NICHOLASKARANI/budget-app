@@ -16,8 +16,8 @@ export default function Login() {
     const success = await login(email, password);
     setIsLoading(false);
     if (success) {
-      // Redirect to app/start-here after successful login
-      navigate('/app/start-here');
+      // Redirect to personal dashboard after successful login
+      navigate('/personal/start-here');
     }
   };
 
