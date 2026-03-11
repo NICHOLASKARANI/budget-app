@@ -1,20 +1,14 @@
-﻿import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+﻿import React, { useState, useEffect } from 'react';
 import {
   TicketIcon,
   ClockIcon,
   CheckCircleIcon,
   FaceSmileIcon,
-  UsersIcon,
-  ChartBarIcon,
-  ExclamationTriangleIcon,
-  StarIcon
+  UsersIcon
 } from '@heroicons/react/24/outline';
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -27,63 +21,56 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import api from '../../services/api';
+import { supportService } from '../../services/dataService';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function SupportDashboard() {
   const [dateRange, setDateRange] = useState('week');
   const [teamFilter, setTeamFilter] = useState('all');
-
-  // Fetch support data
-  const { data: supportData, isLoading } = useQuery('support-dashboard', async () => {
-    const [
-      ticketsRes,
-      responseTimeRes,
-      resolutionTimeRes,
-      satisfactionRes,
-      issuesRes,
-      teamRes
-    ] = await Promise.all([
-      api.get('/support/tickets', { params: { period: dateRange, team: teamFilter } }),
-      api.get('/support/response-time', { params: { period: dateRange } }),
-      api.get('/support/resolution-time', { params: { period: dateRange } }),
-      api.get('/support/customer-satisfaction', { params: { period: dateRange } }),
-      api.get('/support/common-issues', { params: { period: dateRange } }),
-      api.get('/support/team-performance', { params: { period: dateRange } })
-    ]);
-    
-    return {
-      tickets: ticketsRes.data,
-      responseTime: responseTimeRes.data,
-      resolutionTime: resolutionTimeRes.data,
-      satisfaction: satisfactionRes.data,
-      issues: issuesRes.data,
-      team: teamRes.data
-    };
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({
+    tickets: { total: 0, open: 0, resolved: 0, trend: [], performance: [] },
+    responseTime: { average: 0 },
+    resolutionTime: { average: 0 },
+    satisfaction: { score: 0, trend: [] },
+    issues: { common: [] },
+    team: { members: [], efficiency: 0 }
   });
 
-  // Custom label renderer for pie chart
+  useEffect(() => {
+    fetchData();
+  }, [dateRange, teamFilter]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const tickets = await supportService.getTickets(dateRange, teamFilter);
+      const responseTime = await supportService.getResponseTime(dateRange);
+      const resolutionTime = await supportService.getResolutionTime(dateRange);
+      const satisfaction = await supportService.getCustomerSatisfaction(dateRange);
+      const issues = await supportService.getCommonIssues(dateRange);
+      const team = await supportService.getTeamPerformance(dateRange);
+      
+      setData({ tickets, responseTime, resolutionTime, satisfaction, issues, team });
+    } catch (error) {
+      console.error('Error fetching support data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderCustomizedLabel = ({ name, percent }) => {
     return name + ' (' + (percent * 100).toFixed(0) + '%)';
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
-
-  // Calculate key metrics
-  const totalTickets = supportData?.tickets?.total || 0;
-  const openTickets = supportData?.tickets?.open || 0;
-  const resolvedTickets = supportData?.tickets?.resolved || 0;
-  const avgResponseTime = supportData?.responseTime?.average || 0;
-  const avgResolutionTime = supportData?.resolutionTime?.average || 0;
-  const csat = supportData?.satisfaction?.score || 0;
-  const teamEfficiency = supportData?.team?.efficiency || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -132,7 +119,7 @@ export default function SupportDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Total Tickets</dt>
                     <dd className="text-2xl font-semibold text-gray-900">
-                      {totalTickets.toLocaleString()}
+                      {data.tickets.total.toLocaleString()}
                     </dd>
                   </dl>
                 </div>
@@ -140,7 +127,7 @@ export default function SupportDashboard() {
             </div>
             <div className="bg-indigo-50 px-5 py-2">
               <div className="text-sm text-indigo-600">
-                {openTickets} open · {resolvedTickets} resolved
+                {data.tickets.open} open · {data.tickets.resolved} resolved
               </div>
             </div>
           </div>
@@ -155,7 +142,7 @@ export default function SupportDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Avg Response Time</dt>
                     <dd className="text-2xl font-semibold text-gray-900">
-                      {avgResponseTime}h
+                      {data.responseTime.average}h
                     </dd>
                   </dl>
                 </div>
@@ -178,7 +165,7 @@ export default function SupportDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Avg Resolution Time</dt>
                     <dd className="text-2xl font-semibold text-gray-900">
-                      {avgResolutionTime}h
+                      {data.resolutionTime.average}h
                     </dd>
                   </dl>
                 </div>
@@ -201,7 +188,7 @@ export default function SupportDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">CSAT Score</dt>
                     <dd className="text-2xl font-semibold text-gray-900">
-                      {csat}%
+                      {data.satisfaction.score}%
                     </dd>
                   </dl>
                 </div>
@@ -222,7 +209,7 @@ export default function SupportDashboard() {
             <h3 className="text-lg font-medium text-gray-900 mb-4">Ticket Volume Trend</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={supportData?.tickets?.trend || []}>
+                <AreaChart data={data.tickets.trend}>
                   <defs>
                     <linearGradient id="ticketGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
@@ -244,7 +231,7 @@ export default function SupportDashboard() {
             <h3 className="text-lg font-medium text-gray-900 mb-4">Response vs Resolution Time</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={supportData?.tickets?.performance || []}>
+                <LineChart data={data.tickets.performance}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
@@ -265,7 +252,7 @@ export default function SupportDashboard() {
             <h3 className="text-lg font-medium text-gray-900 mb-4">Customer Satisfaction Trend</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={supportData?.satisfaction?.trend || []}>
+                <LineChart data={data.satisfaction.trend}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis domain={[0, 100]} />
@@ -283,7 +270,7 @@ export default function SupportDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={supportData?.issues?.common || []}
+                    data={data.issues.common}
                     cx="50%"
                     cy="50%"
                     labelLine={true}
@@ -293,8 +280,7 @@ export default function SupportDashboard() {
                     dataKey="count"
                     nameKey="issue"
                   >
-                    {supportData?.issues?.common?.map((entry, index) => {
-                      // Use string concatenation for the key
+                    {data.issues.common.map((entry, index) => {
                       const cellKey = 'cell-' + index;
                       return (
                         <Cell key={cellKey} fill={COLORS[index % COLORS.length]} />
@@ -339,7 +325,7 @@ export default function SupportDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {supportData?.team?.members?.map((member) => (
+                {data.team.members.map((member) => (
                   <tr key={member.name} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {member.name}
@@ -375,36 +361,6 @@ export default function SupportDashboard() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* SLA Compliance */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {[
-            { name: 'Response Time SLA', value: 92, target: 95, color: 'green' },
-            { name: 'Resolution Time SLA', value: 88, target: 90, color: 'yellow' },
-            { name: 'Customer Satisfaction', value: 94, target: 95, color: 'purple' }
-          ].map((sla) => (
-            <div key={sla.name} className="bg-white shadow rounded-lg p-6">
-              <h4 className="text-sm font-medium text-gray-500 mb-2">{sla.name}</h4>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-3xl font-bold text-gray-900">{sla.value}%</span>
-                <span className="text-sm text-gray-500">Target: {sla.target}%</span>
-              </div>
-              <div className="relative pt-1">
-                <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
-                  <div
-                    style={{ width: sla.value + '%' }}
-                    className={(sla.value >= sla.target ? 'bg-green-600' : 'bg-yellow-500') + ' shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center'}
-                  />
-                </div>
-              </div>
-              <div className="mt-4 text-sm">
-                <span className={sla.value >= sla.target ? 'text-green-600' : 'text-yellow-600'}>
-                  {sla.value >= sla.target ? '✓ Meeting target' : '⚠ Below target'}
-                </span>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
