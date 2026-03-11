@@ -46,7 +46,7 @@ export default function SavingsGoals() {
 
   // Update goal progress mutation
   const updateProgressMutation = useMutation(
-    ({ id, saved_amount }) => api.put(/goals/, { saved_amount }),
+    ({ id, saved_amount }) => api.put('/goals/' + id, { saved_amount }),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('goals');
@@ -58,7 +58,7 @@ export default function SavingsGoals() {
 
   // Delete goal mutation
   const deleteMutation = useMutation(
-    (id) => api.delete(/goals/),
+    (id) => api.delete('/goals/' + id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('goals');
@@ -178,12 +178,12 @@ export default function SavingsGoals() {
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div
                       className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
-                      style={{ width: ${progress}% }}
+                      style={{ width: progress + '%' }}
                     />
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>{progress.toFixed(1)}% complete</span>
-                    <span>{daysLeft > 0 ? ${daysLeft} days left : 'Overdue'}</span>
+                    <span>{daysLeft > 0 ? daysLeft + ' days left' : 'Overdue'}</span>
                   </div>
                 </div>
 

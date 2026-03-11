@@ -1,9 +1,9 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import {
   CurrencyDollarIcon,
   CreditCardIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   PresentationChartLineIcon,
   ArrowDownTrayIcon,
   PrinterIcon,
@@ -62,12 +62,12 @@ export default function AnnualSummary() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', nnual-report-.);
+      link.setAttribute('download', 'annual-report-' + selectedYear + '.' + format);
       document.body.appendChild(link);
       link.click();
       link.remove();
       
-      toast.success(Report exported as );
+      toast.success('Report exported as ' + format.toUpperCase());
     } catch (error) {
       toast.error('Failed to export report');
     } finally {
@@ -155,7 +155,7 @@ export default function AnnualSummary() {
           <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
             <div className="flex items-center">
               <div className="p-3 bg-green-100 rounded-xl">
-                <TrendingUpIcon className="h-6 w-6 text-green-600" />
+                <ArrowTrendingUpIcon className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Net Savings</p>
@@ -212,7 +212,7 @@ export default function AnnualSummary() {
                     cx="50%"
                     cy="50%"
                     labelLine={true}
-                    label={({ category, percent }) => ${category} %}
+                    label={({ category, percent }) => category + ' ' + (percent * 100).toFixed(0) + '%'}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="total"

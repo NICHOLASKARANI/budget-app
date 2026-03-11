@@ -82,7 +82,7 @@ export default function NetWorthTracker() {
 
   // Delete asset mutation
   const deleteAssetMutation = useMutation(
-    (id) => api.delete(/networth/assets/),
+    (id) => api.delete('/networth/assets/' + id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('assets');
@@ -95,7 +95,7 @@ export default function NetWorthTracker() {
 
   // Delete liability mutation
   const deleteLiabilityMutation = useMutation(
-    (id) => api.delete(/networth/liabilities/),
+    (id) => api.delete('/networth/liabilities/' + id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('liabilities');

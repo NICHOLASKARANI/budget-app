@@ -1,10 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import {
   CalendarIcon,
   CurrencyDollarIcon,
   CreditCardIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline';
 import {

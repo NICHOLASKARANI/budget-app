@@ -82,6 +82,11 @@ export default function BudgetPlanner() {
     );
   }
 
+  const totalBudget = budgets?.reduce((sum, b) => sum + parseFloat(b.budget_amount), 0) || 0;
+  const totalSpent = Object.values(actualSpending).reduce((a, b) => a + b, 0);
+  const remaining = totalBudget - totalSpent;
+  const utilization = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : '0';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -122,34 +127,28 @@ export default function BudgetPlanner() {
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <p className="text-sm font-medium text-gray-500">Total Budget</p>
             <p className="text-2xl font-bold text-gray-900 mt-2">
-              {user?.currency} {budgets?.reduce((sum, b) => sum + parseFloat(b.budget_amount), 0).toFixed(2) || '0.00'}
+              {user?.currency} {totalBudget.toFixed(2)}
             </p>
           </div>
           
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <p className="text-sm font-medium text-gray-500">Total Spent</p>
             <p className="text-2xl font-bold text-red-600 mt-2">
-              {user?.currency} {Object.values(actualSpending).reduce((a, b) => a + b, 0).toFixed(2)}
+              {user?.currency} {totalSpent.toFixed(2)}
             </p>
           </div>
           
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <p className="text-sm font-medium text-gray-500">Remaining</p>
             <p className="text-2xl font-bold text-green-600 mt-2">
-              {user?.currency} {(
-                (budgets?.reduce((sum, b) => sum + parseFloat(b.budget_amount), 0) || 0) -
-                Object.values(actualSpending).reduce((a, b) => a + b, 0)
-              ).toFixed(2)}
+              {user?.currency} {remaining.toFixed(2)}
             </p>
           </div>
           
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <p className="text-sm font-medium text-gray-500">Budget Utilization</p>
             <p className="text-2xl font-bold text-indigo-600 mt-2">
-              {budgets?.reduce((sum, b) => sum + parseFloat(b.budget_amount), 0) > 0
-                ? ((Object.values(actualSpending).reduce((a, b) => a + b, 0) / 
-                   budgets?.reduce((sum, b) => sum + parseFloat(b.budget_amount), 0)) * 100).toFixed(1)
-                : '0'}%
+              {utilization}%
             </p>
           </div>
         </div>
@@ -163,11 +162,23 @@ export default function BudgetPlanner() {
             <div className="space-y-6">
               {categories.map((category) => {
                 const budget = budgets?.find(b => b.category === category);
-                const budgetAmount = budget ? parseFloat(budget.budget_amount) : 0;
+                const budgetValue = budget ? parseFloat(budget.budget_amount) : 0;
                 const actual = actualSpending[category] || 0;
-                const difference = budgetAmount - actual;
+                const difference = budgetValue - actual;
                 const isOverBudget = difference < 0;
-                const progress = budgetAmount > 0 ? (actual / budgetAmount) * 100 : 0;
+                const progress = budgetValue > 0 ? (actual / budgetValue) * 100 : 0;
+
+                let statusColor = 'text-green-600';
+                if (isOverBudget) {
+                  statusColor = 'text-red-600';
+                }
+                
+                let progressColor = 'bg-green-600';
+                if (isOverBudget) {
+                  progressColor = 'bg-red-600';
+                } else if (progress > 80) {
+                  progressColor = 'bg-yellow-500';
+                }
 
                 return (
                   <div key={category} className="space-y-2">
@@ -204,7 +215,7 @@ export default function BudgetPlanner() {
                           <button
                             onClick={() => {
                               setEditingCategory(category);
-                              setBudgetAmount(budgetAmount);
+                              setBudgetAmount(budgetValue);
                             }}
                             className="text-indigo-600 hover:text-indigo-700"
                           >
@@ -214,12 +225,12 @@ export default function BudgetPlanner() {
                       </div>
                       <div className="flex items-center space-x-4">
                         <span className="text-sm text-gray-500">
-                          Budget: {user?.currency} {budgetAmount.toFixed(2)}
+                          Budget: {user?.currency} {budgetValue.toFixed(2)}
                         </span>
                         <span className="text-sm text-gray-500">
                           Actual: {user?.currency} {actual.toFixed(2)}
                         </span>
-                        <span className={	ext-sm font-medium }>
+                        <span className={'text-sm font-medium ' + statusColor}>
                           {difference >= 0 ? '+' : ''}{user?.currency} {difference.toFixed(2)}
                         </span>
                       </div>
@@ -228,8 +239,8 @@ export default function BudgetPlanner() {
                     {/* Progress Bar */}
                     <div className="w-full bg-gray-200 rounded-full h-2.5">
                       <div
-                        className={h-2.5 rounded-full transition-all duration-500 }
-                        style={{ width: ${Math.min(progress, 100)}% }}
+                        className={'h-2.5 rounded-full transition-all duration-500 ' + progressColor}
+                        style={{ width: Math.min(progress, 100) + '%' }}
                       />
                     </div>
 

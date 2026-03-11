@@ -4,12 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   CurrencyDollarIcon,
   CreditCardIcon,
-  TrendingUpIcon,
   ChartBarIcon,
   FlagIcon,
   ArrowPathIcon,
-  ArrowTrendingUpIcon,
-  DocumentTextIcon
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
@@ -30,6 +28,16 @@ export default function Dashboard() {
     { name: 'Active Goals', value: '0', change: '0', changeType: 'neutral' },
   ];
 
+  const getChangeClass = (changeType) => {
+    if (changeType === 'increase') {
+      return 'text-green-600';
+    }
+    if (changeType === 'decrease') {
+      return 'text-red-600';
+    }
+    return 'text-gray-500';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -49,7 +57,7 @@ export default function Dashboard() {
             <div key={stat.name} className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
               <p className="text-sm font-medium text-gray-500">{stat.name}</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
-              <p className={	ext-sm mt-2 }>
+              <p className={'text-sm mt-2 ' + getChangeClass(stat.changeType)}>
                 {stat.change} from last month
               </p>
             </div>
@@ -66,7 +74,7 @@ export default function Dashboard() {
                 onClick={() => navigate(action.path)}
                 className="group p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-200 transform hover:scale-105"
               >
-                <div className={inline-flex p-3 rounded-xl  text-white mb-3}>
+                <div className={'inline-flex p-3 rounded-xl ' + action.color + ' text-white mb-3'}>
                   <action.icon className="h-6 w-6" />
                 </div>
                 <h3 className="font-semibold text-gray-900">{action.name}</h3>

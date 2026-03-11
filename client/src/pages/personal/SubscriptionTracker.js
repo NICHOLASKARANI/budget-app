@@ -54,7 +54,7 @@ export default function SubscriptionTracker() {
 
   // Update subscription mutation
   const updateMutation = useMutation(
-    (data) => api.put(/subscriptions/, data),
+    (data) => api.put('/subscriptions/' + editingSubscription.id, data),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('subscriptions');
@@ -70,7 +70,7 @@ export default function SubscriptionTracker() {
 
   // Delete subscription mutation
   const deleteMutation = useMutation(
-    (id) => api.delete(/subscriptions/),
+    (id) => api.delete('/subscriptions/' + id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('subscriptions');
