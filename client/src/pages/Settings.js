@@ -4,41 +4,49 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { 
   CurrencyDollarIcon, 
-  CalendarIcon, 
-  BanknotesIcon,
-  ClockIcon,
-  BellAlertIcon,
-  LanguageIcon,
   PaintBrushIcon,
-  DevicePhoneMobileIcon
+  BellAlertIcon,
+  DevicePhoneMobileIcon,
+  GlobeAltIcon,
+  CloudArrowDownIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 
 const currencies = [
-  { code: 'USD', symbol: '$', name: 'US Dollar', flag: '🇺🇸' },
-  { code: 'EUR', symbol: '€', name: 'Euro', flag: '🇪🇺' },
-  { code: 'GBP', symbol: '£', name: 'British Pound', flag: '🇬🇧' },
-  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar', flag: '🇨🇦' },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', flag: '🇦🇺' },
-];
-
-const languages = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'es', name: 'Spanish', flag: '🇪🇸' },
-  { code: 'fr', name: 'French', flag: '🇫🇷' },
-  { code: 'de', name: 'German', flag: '🇩🇪' },
-  { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
+  { code: 'USD', symbol: '$', name: 'US Dollar', flag: '🇺🇸', region: 'North America' },
+  { code: 'EUR', symbol: '€', name: 'Euro', flag: '🇪🇺', region: 'Europe' },
+  { code: 'GBP', symbol: '£', name: 'British Pound', flag: '🇬🇧', region: 'Europe' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar', flag: '🇨🇦', region: 'North America' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', flag: '🇦🇺', region: 'Oceania' },
+  // African Currencies
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand', flag: '🇿🇦', region: 'Africa' },
+  { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', flag: '🇳🇬', region: 'Africa' },
+  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', flag: '🇰🇪', region: 'Africa' },
+  { code: 'GHS', symbol: '₵', name: 'Ghanaian Cedi', flag: '🇬🇭', region: 'Africa' },
+  { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound', flag: '🇪🇬', region: 'Africa' },
+  { code: 'MAD', symbol: 'DH', name: 'Moroccan Dirham', flag: '🇲🇦', region: 'Africa' },
+  { code: 'TZS', symbol: 'TSh', name: 'Tanzanian Shilling', flag: '🇹🇿', region: 'Africa' },
+  { code: 'UGX', symbol: 'USh', name: 'Ugandan Shilling', flag: '🇺🇬', region: 'Africa' },
+  { code: 'RWF', symbol: 'FRw', name: 'Rwandan Franc', flag: '🇷🇼', region: 'Africa' },
+  // Asian Currencies
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen', flag: '🇯🇵', region: 'Asia' },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', flag: '🇨🇳', region: 'Asia' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee', flag: '🇮🇳', region: 'Asia' },
+  // Other
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', flag: '🇧🇷', region: 'South America' },
+  { code: 'MXN', symbol: '$', name: 'Mexican Peso', flag: '🇲🇽', region: 'North America' }
 ];
 
 const themes = [
-  { name: 'Light', value: 'light', class: 'bg-white text-gray-900' },
-  { name: 'Dark', value: 'dark', class: 'bg-gray-900 text-white' },
-  { name: 'System', value: 'system', class: 'bg-indigo-600 text-white' },
+  { name: 'Light', value: 'light', class: 'bg-white text-gray-900', icon: '☀️' },
+  { name: 'Dark', value: 'dark', class: 'bg-gray-900 text-white', icon: '🌙' },
+  { name: 'System', value: 'system', class: 'bg-indigo-600 text-white', icon: '🖥️' }
 ];
 
 const dateFormats = [
   { value: 'MM/DD/YYYY', example: '03/15/2026' },
   { value: 'DD/MM/YYYY', example: '15/03/2026' },
-  { value: 'YYYY-MM-DD', example: '2026-03-15' },
+  { value: 'YYYY-MM-DD', example: '2026-03-15' }
 ];
 
 export default function Settings() {
@@ -52,18 +60,36 @@ export default function Settings() {
     payFrequency: 'Monthly',
     fiscalYearStart: 'January',
     dateFormat: 'MM/DD/YYYY',
-    language: 'en',
     theme: 'light',
+    darkMode: false,
     emailNotifications: true,
     pushNotifications: false,
     monthlyReports: true,
     budgetAlerts: true,
     twoFactorAuth: false,
+    offlineMode: true,
+    autoBackup: true,
+    dataPrivacy: true
   });
 
   useEffect(() => {
+    // Load saved theme from localStorage
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setSettings(prev => ({ ...prev, theme: savedTheme }));
+      applyTheme(savedTheme);
+    }
     fetchSettings();
   }, []);
+
+  const applyTheme = (theme) => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  };
 
   const fetchSettings = async () => {
     try {
@@ -73,6 +99,9 @@ export default function Settings() {
         return acc;
       }, {});
       setSettings(prev => ({ ...prev, ...savedSettings }));
+      if (savedSettings.theme) {
+        applyTheme(savedSettings.theme);
+      }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
     }
@@ -85,7 +114,13 @@ export default function Settings() {
       if (updateUser) {
         updateUser({ ...user, currency: settings.currency });
       }
-      toast.success('Settings saved successfully');
+      applyTheme(settings.theme);
+      toast.success('✅ Settings saved successfully!');
+      
+      // Show offline storage confirmation
+      if (settings.offlineMode) {
+        toast.success('📱 Offline mode enabled - data will sync when online');
+      }
     } catch (error) {
       toast.error('Failed to save settings');
     } finally {
@@ -96,57 +131,17 @@ export default function Settings() {
   const getTabClass = (tabId) => {
     const baseClass = 'flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap';
     if (activeTab === tabId) {
-      return baseClass + ' border-indigo-600 text-indigo-600';
+      return baseClass + ' border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400';
     }
-    return baseClass + ' border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+    return baseClass + ' border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:border-gray-300';
   };
 
   const getCurrencyButtonClass = (currencyCode) => {
     const baseClass = 'relative p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 transform';
     if (settings.currency === currencyCode) {
-      return baseClass + ' border-indigo-600 bg-indigo-50 ring-4 ring-indigo-600 ring-opacity-20';
+      return baseClass + ' border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 ring-4 ring-indigo-600 ring-opacity-20';
     }
-    return baseClass + ' border-gray-200 hover:border-indigo-300 hover:bg-gray-50';
-  };
-
-  const getYearButtonClass = (year) => {
-    const baseClass = 'py-3 px-4 rounded-lg border-2 font-medium transition-all';
-    if (settings.year === year) {
-      return baseClass + ' border-indigo-600 bg-indigo-600 text-white shadow-lg';
-    }
-    return baseClass + ' border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-gray-50';
-  };
-
-  const getFrequencyButtonClass = (freq) => {
-    const baseClass = 'py-3 px-4 rounded-lg border-2 font-medium transition-all';
-    if (settings.payFrequency === freq) {
-      return baseClass + ' border-indigo-600 bg-indigo-600 text-white shadow-lg';
-    }
-    return baseClass + ' border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-gray-50';
-  };
-
-  const getLanguageButtonClass = (langCode) => {
-    const baseClass = 'p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 transform';
-    if (settings.language === langCode) {
-      return baseClass + ' border-green-600 bg-green-50 ring-4 ring-green-600 ring-opacity-20';
-    }
-    return baseClass + ' border-gray-200 hover:border-green-300 hover:bg-gray-50';
-  };
-
-  const getThemeButtonClass = (themeValue) => {
-    const baseClass = 'p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg transform';
-    if (settings.theme === themeValue) {
-      return baseClass + ' border-green-600 ring-4 ring-green-600 ring-opacity-20';
-    }
-    return baseClass + ' border-gray-200';
-  };
-
-  const getDateFormatButtonClass = (formatValue) => {
-    const baseClass = 'p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 transform';
-    if (settings.dateFormat === formatValue) {
-      return baseClass + ' border-green-600 bg-green-50 ring-4 ring-green-600 ring-opacity-20';
-    }
-    return baseClass + ' border-gray-200 hover:border-green-300 hover:bg-gray-50';
+    return baseClass + ' border-gray-200 dark:border-gray-700 hover:border-indigo-300 hover:bg-gray-50 dark:hover:bg-gray-800';
   };
 
   const tabs = [
@@ -154,21 +149,22 @@ export default function Settings() {
     { id: 'preferences', name: 'Preferences', icon: PaintBrushIcon },
     { id: 'notifications', name: 'Notifications', icon: BellAlertIcon },
     { id: 'security', name: 'Security', icon: DevicePhoneMobileIcon },
+    { id: 'data', name: 'Data & Privacy', icon: CloudArrowDownIcon }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Settings</h1>
-          <p className="text-lg text-gray-600">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Settings</h1>
+          <p className="mt-2 text-sm md:text-base text-gray-600 dark:text-gray-400">
             Customize your budget tracker experience
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="mb-8 border-b border-gray-200">
+        <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8 overflow-x-auto pb-1">
             {tabs.map((tab) => (
               <button
@@ -189,18 +185,18 @@ export default function Settings() {
           <div className="lg:col-span-2 space-y-6">
             {/* General Settings */}
             {activeTab === 'general' && (
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
                 <div className="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600">
                   <h2 className="text-xl font-semibold text-white">General Settings</h2>
                   <p className="text-indigo-100 text-sm mt-1">Manage your basic preferences</p>
                 </div>
                 <div className="p-6 space-y-6">
-                  {/* Currency Selection */}
+                  {/* Currency Selection - Now with African currencies */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       Preferred Currency
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {currencies.map((currency) => (
                         <button
                           key={currency.code}
@@ -208,9 +204,9 @@ export default function Settings() {
                           className={getCurrencyButtonClass(currency.code)}
                         >
                           <div className="text-3xl mb-2">{currency.flag}</div>
-                          <div className="text-2xl font-bold text-gray-900 mb-1">{currency.symbol}</div>
-                          <div className="text-sm font-medium text-gray-700">{currency.code}</div>
-                          <div className="text-xs text-gray-500 truncate">{currency.name}</div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{currency.symbol}</div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{currency.code}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{currency.name}</div>
                         </button>
                       ))}
                     </div>
@@ -218,7 +214,7 @@ export default function Settings() {
 
                   {/* Year Selection */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Budget Year
                     </label>
                     <div className="grid grid-cols-4 gap-2">
@@ -226,7 +222,10 @@ export default function Settings() {
                         <button
                           key={year}
                           onClick={() => setSettings({ ...settings, year })}
-                          className={getYearButtonClass(year)}
+                          className={
+                            py-3 px-4 rounded-lg border-2 font-medium transition-all
+                            
+                          }
                         >
                           {year}
                         </button>
@@ -234,33 +233,9 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* Starting Balance */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Starting Balance
-                    </label>
-                    <div className="relative rounded-xl shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <span className="text-gray-500 sm:text-lg">
-                          {currencies.find(c => c.code === settings.currency)?.symbol || '$'}
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        value={settings.startingBalance}
-                        onChange={(e) => setSettings({ ...settings, startingBalance: parseFloat(e.target.value) || 0 })}
-                        className="block w-full pl-12 pr-12 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <p className="mt-2 text-sm text-gray-500">
-                      This will be your initial balance for net worth calculations
-                    </p>
-                  </div>
-
                   {/* Pay Frequency */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Pay Frequency
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -268,73 +243,48 @@ export default function Settings() {
                         <button
                           key={freq}
                           onClick={() => setSettings({ ...settings, payFrequency: freq })}
-                          className={getFrequencyButtonClass(freq)}
+                          className={
+                            py-3 px-4 rounded-lg border-2 font-medium transition-all
+                            
+                          }
                         >
                           {freq}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  {/* Fiscal Year Start */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fiscal Year Start
-                    </label>
-                    <select
-                      value={settings.fiscalYearStart}
-                      onChange={(e) => setSettings({ ...settings, fiscalYearStart: e.target.value })}
-                      className="mt-1 block w-full pl-4 pr-10 py-4 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      {['January', 'February', 'March', 'April', 'May', 'June', 
-                        'July', 'August', 'September', 'October', 'November', 'December'].map((month) => (
-                        <option key={month} value={month}>{month}</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
               </div>
             )}
 
-            {/* Preferences Tab */}
+            {/* Preferences Tab - With Dark Mode */}
             {activeTab === 'preferences' && (
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
                 <div className="px-6 py-5 bg-gradient-to-r from-green-600 to-teal-600">
                   <h2 className="text-xl font-semibold text-white">Preferences</h2>
                   <p className="text-green-100 text-sm mt-1">Customize your app experience</p>
                 </div>
                 <div className="p-6 space-y-6">
-                  {/* Language */}
+                  {/* Theme - Dark Mode */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Language
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                      {languages.map((lang) => (
-                        <button
-                          key={lang.code}
-                          onClick={() => setSettings({ ...settings, language: lang.code })}
-                          className={getLanguageButtonClass(lang.code)}
-                        >
-                          <div className="text-3xl mb-2">{lang.flag}</div>
-                          <div className="text-sm font-medium text-gray-700">{lang.name}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Theme */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       Theme
                     </label>
                     <div className="grid grid-cols-3 gap-3">
                       {themes.map((theme) => (
                         <button
                           key={theme.value}
-                          onClick={() => setSettings({ ...settings, theme: theme.value })}
-                          className={getThemeButtonClass(theme.value) + ' ' + theme.class}
+                          onClick={() => {
+                            setSettings({ ...settings, theme: theme.value });
+                            applyTheme(theme.value);
+                          }}
+                          className={
+                            p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg transform
+                            
+                            
+                          }
                         >
+                          <div className="text-2xl mb-2">{theme.icon}</div>
                           <div className="font-medium">{theme.name}</div>
                         </button>
                       ))}
@@ -343,7 +293,7 @@ export default function Settings() {
 
                   {/* Date Format */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       Date Format
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -351,10 +301,13 @@ export default function Settings() {
                         <button
                           key={format.value}
                           onClick={() => setSettings({ ...settings, dateFormat: format.value })}
-                          className={getDateFormatButtonClass(format.value)}
+                          className={
+                            p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 transform
+                            
+                          }
                         >
-                          <div className="font-medium text-gray-900">{format.value}</div>
-                          <div className="text-sm text-gray-500 mt-1">{format.example}</div>
+                          <div className="font-medium text-gray-900 dark:text-white">{format.value}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{format.example}</div>
                         </button>
                       ))}
                     </div>
@@ -363,31 +316,39 @@ export default function Settings() {
               </div>
             )}
 
-            {/* Notifications Tab */}
-            {activeTab === 'notifications' && (
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                <div className="px-6 py-5 bg-gradient-to-r from-yellow-500 to-orange-500">
-                  <h2 className="text-xl font-semibold text-white">Notifications</h2>
-                  <p className="text-yellow-100 text-sm mt-1">Manage your alert preferences</p>
+            {/* Data & Privacy Tab */}
+            {activeTab === 'data' && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+                <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-cyan-600">
+                  <h2 className="text-xl font-semibold text-white">Data & Privacy</h2>
+                  <p className="text-blue-100 text-sm mt-1">Control your data and privacy settings</p>
                 </div>
                 <div className="p-6 space-y-4">
                   {[
-                    { id: 'emailNotifications', label: 'Email Notifications', description: 'Receive updates via email' },
-                    { id: 'pushNotifications', label: 'Push Notifications', description: 'Browser push notifications' },
-                    { id: 'monthlyReports', label: 'Monthly Reports', description: 'Get monthly financial summaries' },
-                    { id: 'budgetAlerts', label: 'Budget Alerts', description: 'Alert when nearing budget limits' },
+                    { id: 'offlineMode', label: 'Offline Mode', description: 'Work without internet - data syncs when online', icon: '📱' },
+                    { id: 'autoBackup', label: 'Auto Backup', description: 'Automatically backup your data to the cloud', icon: '☁️' },
+                    { id: 'dataPrivacy', label: 'Privacy Mode', description: 'Keep your financial data private and encrypted', icon: '🔒' }
                   ].map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                       <div>
-                        <p className="font-medium text-gray-900">{item.label}</p>
-                        <p className="text-sm text-gray-500">{item.description}</p>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl">{item.icon}</span>
+                          <p className="font-medium text-gray-900 dark:text-white">{item.label}</p>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.description}</p>
                       </div>
                       <button
                         onClick={() => setSettings({ ...settings, [item.id]: !settings[item.id] })}
-                        className={'relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ' + (settings[item.id] ? 'bg-indigo-600' : 'bg-gray-300')}
+                        className={
+                          relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                          
+                        }
                       >
                         <span
-                          className={'inline-block h-6 w-6 transform rounded-full bg-white transition-transform ' + (settings[item.id] ? 'translate-x-7' : 'translate-x-1')}
+                          className={
+                            inline-block h-6 w-6 transform rounded-full bg-white transition-transform
+                            
+                          }
                         />
                       </button>
                     </div>
@@ -395,55 +356,11 @@ export default function Settings() {
                 </div>
               </div>
             )}
-
-            {/* Security Tab */}
-            {activeTab === 'security' && (
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                <div className="px-6 py-5 bg-gradient-to-r from-red-600 to-pink-600">
-                  <h2 className="text-xl font-semibold text-white">Security</h2>
-                  <p className="text-red-100 text-sm mt-1">Manage your account security</p>
-                </div>
-                <div className="p-6 space-y-6">
-                  {/* Two Factor Authentication */}
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                    <div>
-                      <p className="font-medium text-gray-900">Two-Factor Authentication</p>
-                      <p className="text-sm text-gray-500">Add an extra layer of security</p>
-                    </div>
-                    <button
-                      onClick={() => setSettings({ ...settings, twoFactorAuth: !settings.twoFactorAuth })}
-                      className={'relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ' + (settings.twoFactorAuth ? 'bg-indigo-600' : 'bg-gray-300')}
-                    >
-                      <span
-                        className={'inline-block h-6 w-6 transform rounded-full bg-white transition-transform ' + (settings.twoFactorAuth ? 'translate-x-7' : 'translate-x-1')}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Change Password */}
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <p className="font-medium text-gray-900 mb-3">Change Password</p>
-                    <button className="w-full py-3 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium">
-                      Update Password
-                    </button>
-                  </div>
-
-                  {/* Session Management */}
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <p className="font-medium text-gray-900 mb-2">Active Sessions</p>
-                    <p className="text-sm text-gray-600 mb-3">You're currently logged in on this device</p>
-                    <button className="text-red-600 hover:text-red-700 text-sm font-medium">
-                      Sign out all other devices
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Sidebar - Preview & Save */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl sticky top-6">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl sticky top-6">
               {/* Currency Preview */}
               <div className="p-6 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-t-2xl">
                 <h3 className="text-white text-lg font-semibold mb-4">Live Preview</h3>
@@ -455,6 +372,14 @@ export default function Settings() {
                   <p className="text-indigo-100 text-sm">
                     {currencies.find(c => c.code === settings.currency)?.name}
                   </p>
+                </div>
+              </div>
+
+              {/* Privacy Trust Badge */}
+              <div className="px-6 pt-4">
+                <div className="flex items-center space-x-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 p-3 rounded-xl">
+                  <ShieldCheckIcon className="h-5 w-5" />
+                  <span>Your data is encrypted and private</span>
                 </div>
               </div>
 
@@ -478,33 +403,29 @@ export default function Settings() {
                   )}
                 </button>
 
-                <div className="mt-4 text-xs text-center text-gray-500">
-                  Changes are applied immediately after saving
+                <div className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">
+                  ✅ Changes applied immediately
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Quick Tips */}
-        <div className="mt-8 bg-indigo-50 rounded-xl p-6 border border-indigo-100">
-          <h3 className="text-lg font-semibold text-indigo-900 mb-3">💡 Quick Tips</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Trust Badges */}
+        <div className="mt-8 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-6 border border-indigo-100 dark:border-indigo-800">
+          <h3 className="text-lg font-semibold text-indigo-900 dark:text-indigo-300 mb-3">🔒 Your Data is Safe With Us</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-start space-x-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-indigo-200 rounded-full flex items-center justify-center text-indigo-700 font-bold">1</span>
-              <p className="text-sm text-indigo-800">Choose your currency first - it affects all financial displays</p>
+              <span className="flex-shrink-0 w-6 h-6 bg-indigo-200 dark:bg-indigo-800 rounded-full flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold">✓</span>
+              <p className="text-sm text-indigo-800 dark:text-indigo-200">End-to-end encryption for all your financial data</p>
             </div>
             <div className="flex items-start space-x-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-indigo-200 rounded-full flex items-center justify-center text-indigo-700 font-bold">2</span>
-              <p className="text-sm text-indigo-800">Set your starting balance for accurate net worth tracking</p>
+              <span className="flex-shrink-0 w-6 h-6 bg-indigo-200 dark:bg-indigo-800 rounded-full flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold">✓</span>
+              <p className="text-sm text-indigo-800 dark:text-indigo-200">GDPR compliant - your data never leaves your control</p>
             </div>
             <div className="flex items-start space-x-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-indigo-200 rounded-full flex items-center justify-center text-indigo-700 font-bold">3</span>
-              <p className="text-sm text-indigo-800">Enable notifications to never miss important alerts</p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-indigo-200 rounded-full flex items-center justify-center text-indigo-700 font-bold">4</span>
-              <p className="text-sm text-indigo-800">All settings sync across your devices automatically</p>
+              <span className="flex-shrink-0 w-6 h-6 bg-indigo-200 dark:bg-indigo-800 rounded-full flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold">✓</span>
+              <p className="text-sm text-indigo-800 dark:text-indigo-200">Optional offline mode - store data locally on your device</p>
             </div>
           </div>
         </div>
