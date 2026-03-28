@@ -7,7 +7,6 @@ import {
   PaintBrushIcon,
   BellAlertIcon,
   DevicePhoneMobileIcon,
-  GlobeAltIcon,
   CloudArrowDownIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
@@ -73,7 +72,6 @@ export default function Settings() {
   });
 
   useEffect(() => {
-    // Load saved theme from localStorage
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       setSettings(prev => ({ ...prev, theme: savedTheme }));
@@ -116,8 +114,6 @@ export default function Settings() {
       }
       applyTheme(settings.theme);
       toast.success('✅ Settings saved successfully!');
-      
-      // Show offline storage confirmation
       if (settings.offlineMode) {
         toast.success('📱 Offline mode enabled - data will sync when online');
       }
@@ -155,7 +151,6 @@ export default function Settings() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Settings</h1>
           <p className="mt-2 text-sm md:text-base text-gray-600 dark:text-gray-400">
@@ -163,7 +158,6 @@ export default function Settings() {
           </p>
         </div>
 
-        {/* Tabs */}
         <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8 overflow-x-auto pb-1">
             {tabs.map((tab) => (
@@ -179,11 +173,8 @@ export default function Settings() {
           </nav>
         </div>
 
-        {/* Settings Forms */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Settings */}
           <div className="lg:col-span-2 space-y-6">
-            {/* General Settings */}
             {activeTab === 'general' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
                 <div className="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600">
@@ -191,7 +182,6 @@ export default function Settings() {
                   <p className="text-indigo-100 text-sm mt-1">Manage your basic preferences</p>
                 </div>
                 <div className="p-6 space-y-6">
-                  {/* Currency Selection - Now with African currencies */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       Preferred Currency
@@ -212,7 +202,6 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* Year Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Budget Year
@@ -222,10 +211,13 @@ export default function Settings() {
                         <button
                           key={year}
                           onClick={() => setSettings({ ...settings, year })}
-                          className={
+                          className={`
                             py-3 px-4 rounded-lg border-2 font-medium transition-all
-                            
-                          }
+                            ${settings.year === year
+                              ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-indigo-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }
+                          `}
                         >
                           {year}
                         </button>
@@ -233,7 +225,6 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* Pay Frequency */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Pay Frequency
@@ -243,10 +234,13 @@ export default function Settings() {
                         <button
                           key={freq}
                           onClick={() => setSettings({ ...settings, payFrequency: freq })}
-                          className={
+                          className={`
                             py-3 px-4 rounded-lg border-2 font-medium transition-all
-                            
-                          }
+                            ${settings.payFrequency === freq
+                              ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-indigo-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }
+                          `}
                         >
                           {freq}
                         </button>
@@ -257,7 +251,6 @@ export default function Settings() {
               </div>
             )}
 
-            {/* Preferences Tab - With Dark Mode */}
             {activeTab === 'preferences' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
                 <div className="px-6 py-5 bg-gradient-to-r from-green-600 to-teal-600">
@@ -265,7 +258,6 @@ export default function Settings() {
                   <p className="text-green-100 text-sm mt-1">Customize your app experience</p>
                 </div>
                 <div className="p-6 space-y-6">
-                  {/* Theme - Dark Mode */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       Theme
@@ -278,11 +270,14 @@ export default function Settings() {
                             setSettings({ ...settings, theme: theme.value });
                             applyTheme(theme.value);
                           }}
-                          className={
+                          className={`
                             p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg transform
-                            
-                            
-                          }
+                            ${settings.theme === theme.value
+                              ? 'border-green-600 ring-4 ring-green-600 ring-opacity-20'
+                              : 'border-gray-200 dark:border-gray-700'
+                            }
+                            ${theme.class}
+                          `}
                         >
                           <div className="text-2xl mb-2">{theme.icon}</div>
                           <div className="font-medium">{theme.name}</div>
@@ -291,7 +286,6 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* Date Format */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       Date Format
@@ -301,10 +295,13 @@ export default function Settings() {
                         <button
                           key={format.value}
                           onClick={() => setSettings({ ...settings, dateFormat: format.value })}
-                          className={
+                          className={`
                             p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 transform
-                            
-                          }
+                            ${settings.dateFormat === format.value
+                              ? 'border-green-600 bg-green-50 dark:bg-green-900/30 ring-4 ring-green-600 ring-opacity-20'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-green-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }
+                          `}
                         >
                           <div className="font-medium text-gray-900 dark:text-white">{format.value}</div>
                           <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{format.example}</div>
@@ -316,7 +313,6 @@ export default function Settings() {
               </div>
             )}
 
-            {/* Data & Privacy Tab */}
             {activeTab === 'data' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
                 <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-cyan-600">
@@ -339,16 +335,16 @@ export default function Settings() {
                       </div>
                       <button
                         onClick={() => setSettings({ ...settings, [item.id]: !settings[item.id] })}
-                        className={
+                        className={`
                           relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                          
-                        }
+                          ${settings[item.id] ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'}
+                        `}
                       >
                         <span
-                          className={
+                          className={`
                             inline-block h-6 w-6 transform rounded-full bg-white transition-transform
-                            
-                          }
+                            ${settings[item.id] ? 'translate-x-7' : 'translate-x-1'}
+                          `}
                         />
                       </button>
                     </div>
@@ -358,10 +354,8 @@ export default function Settings() {
             )}
           </div>
 
-          {/* Sidebar - Preview & Save */}
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl sticky top-6">
-              {/* Currency Preview */}
               <div className="p-6 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-t-2xl">
                 <h3 className="text-white text-lg font-semibold mb-4">Live Preview</h3>
                 <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4">
@@ -375,7 +369,6 @@ export default function Settings() {
                 </div>
               </div>
 
-              {/* Privacy Trust Badge */}
               <div className="px-6 pt-4">
                 <div className="flex items-center space-x-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 p-3 rounded-xl">
                   <ShieldCheckIcon className="h-5 w-5" />
@@ -383,7 +376,6 @@ export default function Settings() {
                 </div>
               </div>
 
-              {/* Save Button */}
               <div className="p-6">
                 <button
                   onClick={handleSave}
@@ -402,7 +394,6 @@ export default function Settings() {
                     'Save Settings'
                   )}
                 </button>
-
                 <div className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">
                   ✅ Changes applied immediately
                 </div>
@@ -411,7 +402,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Trust Badges */}
         <div className="mt-8 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-6 border border-indigo-100 dark:border-indigo-800">
           <h3 className="text-lg font-semibold text-indigo-900 dark:text-indigo-300 mb-3">🔒 Your Data is Safe With Us</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
