@@ -1,16 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import {
-  BanknotesIcon,
-  HomeIcon,
-  CurrencyDollarIcon,
-  CreditCardIcon,
-  PlusIcon,
-  TrashIcon,
-  MapPinIcon,
-  UserIcon,
-  WrenchScrewdriverIcon
-} from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, HomeIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -21,72 +11,156 @@ export default function NetWorthTracker() {
   const queryClient = useQueryClient();
   const [showAssetForm, setShowAssetForm] = useState(false);
   const [showLiabilityForm, setShowLiabilityForm] = useState(false);
-  const [assetForm, setAssetForm] = useState({ name: '', type: '', value: '', location: '', condition: 'Good', owner: user?.username || '', notes: '' });
-  const [liabilityForm, setLiabilityForm] = useState({ name: '', type: '', amount: '', interestRate: '', dueDate: '', paymentMethod: 'bank', status: 'Pending', notes: '' });
+  const [assetForm, setAssetForm] = useState({ name: '', type: 'Cash', value: '', location: '', condition: 'Good', notes: '' });
+  const [liabilityForm, setLiabilityForm] = useState({ name: '', type: 'Loan', amount: '', interestRate: '', dueDate: '', status: 'Active', notes: '' });
 
-  const assetTypes = ['Cash', 'Investment', 'Real Estate', 'Vehicle', 'Digital Assets', 'Equipment', 'Inventory', 'Prepaid Expenses'];
-  const liabilityTypes = ['Mortgage', 'Loan', 'Credit Card', 'Student Loan', 'Car Loan', 'Business Loan', 'Other'];
-  const conditions = ['Excellent', 'Good', 'Fair', 'Poor', 'Needs Repair'];
-  const statuses = ['Pending', 'Active', 'Paid', 'Overdue', 'Closed'];
+  const { data: netWorth } = useQuery('networth', () => api.get('/networth').catch(() => []));
+  const { data: assets, refetch: refetchAssets } = useQuery('assets', () => api.get('/networth/assets').catch(() => []));
+  const { data: liabilities, refetch: refetchLiabilities } = useQuery('liabilities', () => api.get('/networth/liabilities').catch(() => []));
 
-  const { data: netWorth, isLoading } = useQuery('networth', () => api.get('/networth').then(res => res.data));
-  const { data: assets } = useQuery('assets', () => api.get('/networth/assets').then(res => res.data));
-  const { data: liabilities } = useQuery('liabilities', () => api.get('/networth/liabilities').then(res => res.data));
+  const addAssetMutation = useMutation(
+    (data) => api.post('/networth/assets', data),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('assets');
+        queryClient.invalidateQueries('networth');
+        toast.success('✅ Asset added successfully!');
+        setShowAssetForm(false);
+        setAssetForm({ name: '', type: 'Cash', value: '', location: '', condition: 'Good', notes: '' });
+      },
+      onError: (error) => toast.error('Failed to add asset: ' + (error.response?.data?.error || error.message))
+    }
+  );
 
-  const addAssetMutation = useMutation((data) => api.post('/networth/assets', data), {
-    onSuccess: () => { queryClient.invalidateQueries(['assets', 'networth']); toast.success('✅ Asset added successfully!'); setShowAssetForm(false); setAssetForm({ name: '', type: '', value: '', location: '', condition: 'Good', owner: user?.username || '', notes: '' }); },
-    onError: () => toast.error('Failed to add asset')
-  });
+  const addLiabilityMutation = useMutation(
+    (data) => api.post('/networth/liabilities', data),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('liabilities');
+        queryClient.invalidateQueries('networth');
+        toast.success('✅ Liability added successfully!');
+        setShowLiabilityForm(false);
+        setLiabilityForm({ name: '', type: 'Loan', amount: '', interestRate: '', dueDate: '', status: 'Active', notes: '' });
+      },
+      onError: (error) => toast.error('Failed to add liability: ' + (error.response?.data?.error || error.message))
+    }
+  );
 
-  const addLiabilityMutation = useMutation((data) => api.post('/networth/liabilities', data), {
-    onSuccess: () => { queryClient.invalidateQueries(['liabilities', 'networth']); toast.success('✅ Liability added successfully!'); setShowLiabilityForm(false); setLiabilityForm({ name: '', type: '', amount: '', interestRate: '', dueDate: '', paymentMethod: 'bank', status: 'Pending', notes: '' }); },
-    onError: () => toast.error('Failed to add liability')
-  });
+  const deleteAsset = (id) => {
+    if (window.confirm('Delete this asset?')) {
+      api.delete('/networth/assets/' + id).then(() => {
+        queryClient.invalidateQueries('assets');
+        queryClient.invalidateQueries('networth');
+        toast.success('Asset deleted');
+      }).catch(() => toast.error('Failed to delete'));
+    }
+  };
 
-  const deleteAssetMutation = useMutation((id) => api.delete('/networth/assets/' + id), {
-    onSuccess: () => { queryClient.invalidateQueries(['assets', 'networth']); toast.success('Asset deleted'); },
-    onError: () => toast.error('Failed to delete asset')
-  });
+  const deleteLiability = (id) => {
+    if (window.confirm('Delete this liability?')) {
+      api.delete('/networth/liabilities/' + id).then(() => {
+        queryClient.invalidateQueries('liabilities');
+        queryClient.invalidateQueries('networth');
+        toast.success('Liability deleted');
+      }).catch(() => toast.error('Failed to delete'));
+    }
+  };
 
-  const deleteLiabilityMutation = useMutation((id) => api.delete('/networth/liabilities/' + id), {
-    onSuccess: () => { queryClient.invalidateQueries(['liabilities', 'networth']); toast.success('Liability deleted'); },
-    onError: () => toast.error('Failed to delete liability')
-  });
-
-  const totalAssets = assets?.reduce((sum, a) => sum + parseFloat(a.value), 0) || 0;
-  const totalLiabilities = liabilities?.reduce((sum, l) => sum + parseFloat(l.amount), 0) || 0;
+  const totalAssets = assets?.reduce((sum, a) => sum + parseFloat(a.value || 0), 0) || 0;
+  const totalLiabilities = liabilities?.reduce((sum, l) => sum + parseFloat(l.amount || 0), 0) || 0;
   const currentNetWorth = totalAssets - totalLiabilities;
 
-  if (isLoading) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-6 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-6 px-4">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div><h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Net Worth Tracker</h1><p className="mt-2 text-sm md:text-base text-gray-600 dark:text-gray-400">Track your assets and liabilities with location & ownership details</p></div>
-          <div className="mt-4 sm:mt-0 flex gap-3"><button onClick={() => setShowAssetForm(true)} className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"><PlusIcon className="h-5 w-5 mr-2" />Add Asset</button><button onClick={() => setShowLiabilityForm(true)} className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"><PlusIcon className="h-5 w-5 mr-2" />Add Liability</button></div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Net Worth Tracker</h1>
+            <p className="text-gray-600 dark:text-gray-400">Track your assets and liabilities</p>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setShowAssetForm(true)} className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700">+ Add Asset</button>
+            <button onClick={() => setShowLiabilityForm(true)} className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700">+ Add Liability</button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white"><p className="text-sm font-medium text-green-100">Total Assets</p><p className="text-3xl font-bold mt-2">{user?.currency} {totalAssets.toLocaleString()}</p><p className="text-sm text-green-100 mt-2">+12.3% this month</p></div>
-          <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-lg p-6 text-white"><p className="text-sm font-medium text-red-100">Total Liabilities</p><p className="text-3xl font-bold mt-2">{user?.currency} {totalLiabilities.toLocaleString()}</p><p className="text-sm text-red-100 mt-2">-3.2% this month</p></div>
-          <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-lg p-6 text-white"><p className="text-sm font-medium text-indigo-100">Net Worth</p><p className="text-3xl font-bold mt-2">{user?.currency} {currentNetWorth.toLocaleString()}</p><p className="text-sm text-indigo-100 mt-2">{totalAssets > 0 ? ((currentNetWorth / totalAssets) * 100).toFixed(1) : '0'}% of assets</p></div>
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-6 text-white">
+            <p className="text-sm">Total Assets</p>
+            <p className="text-3xl font-bold">{user?.currency} {totalAssets.toLocaleString()}</p>
+          </div>
+          <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-2xl p-6 text-white">
+            <p className="text-sm">Total Liabilities</p>
+            <p className="text-3xl font-bold">{user?.currency} {totalLiabilities.toLocaleString()}</p>
+          </div>
+          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white">
+            <p className="text-sm">Net Worth</p>
+            <p className="text-3xl font-bold">{user?.currency} {currentNetWorth.toLocaleString()}</p>
+          </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8"><h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Net Worth Trend</h3><div className="h-80"><ResponsiveContainer width="100%" height="100%"><AreaChart data={netWorth || []}><defs><linearGradient id="netWorthGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/><stop offset="95%" stopColor="#4f46e5" stopOpacity={0.1}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip /><Area type="monotone" dataKey="net_worth" stroke="#4f46e5" fill="url(#netWorthGradient)" /></AreaChart></ResponsiveContainer></div></div>
+        <div className="grid grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+            <div className="p-4 bg-green-600 text-white font-semibold">Assets</div>
+            <div className="p-4 space-y-3">
+              {assets?.map(asset => (
+                <div key={asset.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                  <div><p className="font-medium">{asset.name}</p><p className="text-sm text-gray-500">{asset.type} • {asset.location || 'No location'}</p></div>
+                  <div className="flex items-center gap-3"><span className="font-bold text-green-600">{user?.currency} {parseFloat(asset.value).toLocaleString()}</span><button onClick={() => deleteAsset(asset.id)} className="text-red-500"><TrashIcon className="h-5 w-5" /></button></div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden"><div className="px-6 py-5 bg-gradient-to-r from-green-600 to-emerald-600"><h3 className="text-lg font-semibold text-white">Assets</h3></div><div className="p-6"><div className="space-y-4">{assets?.map((asset) => (<div key={asset.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"><div className="flex items-center space-x-3"><div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg"><HomeIcon className="h-5 w-5 text-green-600 dark:text-green-400" /></div><div><p className="font-medium text-gray-900 dark:text-white">{asset.name}</p><p className="text-sm text-gray-500 dark:text-gray-400">{asset.type} • {asset.location || 'No location'} • {asset.condition}</p><p className="text-xs text-gray-400">Owner: {asset.owner}</p></div></div><div className="flex items-center space-x-4"><span className="font-medium text-green-600 dark:text-green-400">{user?.currency} {parseFloat(asset.value).toLocaleString()}</span><button onClick={() => deleteAssetMutation.mutate(asset.id)} className="text-red-600 hover:text-red-700"><TrashIcon className="h-5 w-5" /></button></div></div>))}</div></div></div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden"><div className="px-6 py-5 bg-gradient-to-r from-red-600 to-pink-600"><h3 className="text-lg font-semibold text-white">Liabilities</h3></div><div className="p-6"><div className="space-y-4">{liabilities?.map((liability) => (<div key={liability.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"><div className="flex items-center space-x-3"><div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg"><CreditCardIcon className="h-5 w-5 text-red-600 dark:text-red-400" /></div><div><p className="font-medium text-gray-900 dark:text-white">{liability.name}</p><p className="text-sm text-gray-500 dark:text-gray-400">{liability.type} • {liability.interestRate}% APR • Due: {liability.dueDate}</p><p className="text-xs text-gray-400">Status: {liability.status} • Payment: {liability.paymentMethod}</p></div></div><div className="flex items-center space-x-4"><span className="font-medium text-red-600 dark:text-red-400">{user?.currency} {parseFloat(liability.amount).toLocaleString()}</span><button onClick={() => deleteLiabilityMutation.mutate(liability.id)} className="text-red-600 hover:text-red-700"><TrashIcon className="h-5 w-5" /></button></div></div>))}</div></div></div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+            <div className="p-4 bg-red-600 text-white font-semibold">Liabilities</div>
+            <div className="p-4 space-y-3">
+              {liabilities?.map(liability => (
+                <div key={liability.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                  <div><p className="font-medium">{liability.name}</p><p className="text-sm text-gray-500">{liability.type} • {liability.interestRate}% • Due: {liability.dueDate}</p></div>
+                  <div className="flex items-center gap-3"><span className="font-bold text-red-600">{user?.currency} {parseFloat(liability.amount).toLocaleString()}</span><button onClick={() => deleteLiability(liability.id)} className="text-red-500"><TrashIcon className="h-5 w-5" /></button></div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Asset Modal */}
-      {showAssetForm && (<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"><div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Add New Asset</h2><form onSubmit={(e) => { e.preventDefault(); addAssetMutation.mutate(assetForm); }}><div className="space-y-4"><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label><input type="text" value={assetForm.name} onChange={(e) => setAssetForm({...assetForm, name: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500" required /></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label><select value={assetForm.type} onChange={(e) => setAssetForm({...assetForm, type: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" required>{assetTypes.map(t => <option key={t} value={t}>{t}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Value</label><input type="number" step="0.01" value={assetForm.value} onChange={(e) => setAssetForm({...assetForm, value: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" required /></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location (e.g., Bank, Garage)</label><input type="text" value={assetForm.location} onChange={(e) => setAssetForm({...assetForm, location: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" placeholder="Where is this asset stored?" /></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Condition</label><select value={assetForm.condition} onChange={(e) => setAssetForm({...assetForm, condition: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl">{conditions.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Owner</label><input type="text" value={assetForm.owner} onChange={(e) => setAssetForm({...assetForm, owner: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" required /></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label><textarea value={assetForm.notes} onChange={(e) => setAssetForm({...assetForm, notes: e.target.value})} rows="2" className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" /></div><div className="flex space-x-3 pt-4"><button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">Add Asset</button><button type="button" onClick={() => setShowAssetForm(false)} className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300">Cancel</button></div></div></form></div></div>)}
+      {showAssetForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold mb-4">Add Asset</h2>
+            <form onSubmit={(e) => { e.preventDefault(); addAssetMutation.mutate(assetForm); }}>
+              <input type="text" placeholder="Name" value={assetForm.name} onChange={(e) => setAssetForm({...assetForm, name: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" required />
+              <select value={assetForm.type} onChange={(e) => setAssetForm({...assetForm, type: e.target.value})} className="w-full p-2 mb-3 border rounded-lg"><option>Cash</option><option>Investment</option><option>Real Estate</option><option>Vehicle</option><option>Other</option></select>
+              <input type="number" placeholder="Value" value={assetForm.value} onChange={(e) => setAssetForm({...assetForm, value: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" required />
+              <input type="text" placeholder="Location (e.g., Bank, Garage)" value={assetForm.location} onChange={(e) => setAssetForm({...assetForm, location: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" />
+              <textarea placeholder="Notes" value={assetForm.notes} onChange={(e) => setAssetForm({...assetForm, notes: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" rows="2" />
+              <div className="flex gap-3"><button type="submit" className="flex-1 py-2 bg-green-600 text-white rounded-lg">Save</button><button type="button" onClick={() => setShowAssetForm(false)} className="flex-1 py-2 bg-gray-300 rounded-lg">Cancel</button></div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Liability Modal */}
-      {showLiabilityForm && (<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"><div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6"><h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Add New Liability</h2><form onSubmit={(e) => { e.preventDefault(); addLiabilityMutation.mutate(liabilityForm); }}><div className="space-y-4"><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label><input type="text" value={liabilityForm.name} onChange={(e) => setLiabilityForm({...liabilityForm, name: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" required /></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label><select value={liabilityForm.type} onChange={(e) => setLiabilityForm({...liabilityForm, type: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" required>{liabilityTypes.map(t => <option key={t} value={t}>{t}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label><input type="number" step="0.01" value={liabilityForm.amount} onChange={(e) => setLiabilityForm({...liabilityForm, amount: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" required /></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Interest Rate (%)</label><input type="number" step="0.01" value={liabilityForm.interestRate} onChange={(e) => setLiabilityForm({...liabilityForm, interestRate: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" /></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label><input type="date" value={liabilityForm.dueDate} onChange={(e) => setLiabilityForm({...liabilityForm, dueDate: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" required /></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method</label><select value={liabilityForm.paymentMethod} onChange={(e) => setLiabilityForm({...liabilityForm, paymentMethod: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl"><option value="bank">Bank Transfer</option><option value="cash">Cash</option><option value="credit">Credit Card</option><option value="check">Check</option></select></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label><select value={liabilityForm.status} onChange={(e) => setLiabilityForm({...liabilityForm, status: e.target.value})} className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl">{statuses.map(s => <option key={s} value={s}>{s}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label><textarea value={liabilityForm.notes} onChange={(e) => setLiabilityForm({...liabilityForm, notes: e.target.value})} rows="2" className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white rounded-xl" /></div><div className="flex space-x-3 pt-4"><button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">Add Liability</button><button type="button" onClick={() => setShowLiabilityForm(false)} className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300">Cancel</button></div></div></form></div></div>)}
+      {showLiabilityForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold mb-4">Add Liability</h2>
+            <form onSubmit={(e) => { e.preventDefault(); addLiabilityMutation.mutate(liabilityForm); }}>
+              <input type="text" placeholder="Name" value={liabilityForm.name} onChange={(e) => setLiabilityForm({...liabilityForm, name: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" required />
+              <select value={liabilityForm.type} onChange={(e) => setLiabilityForm({...liabilityForm, type: e.target.value})} className="w-full p-2 mb-3 border rounded-lg"><option>Loan</option><option>Mortgage</option><option>Credit Card</option><option>Student Loan</option><option>Other</option></select>
+              <input type="number" placeholder="Amount" value={liabilityForm.amount} onChange={(e) => setLiabilityForm({...liabilityForm, amount: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" required />
+              <input type="number" placeholder="Interest Rate (%)" value={liabilityForm.interestRate} onChange={(e) => setLiabilityForm({...liabilityForm, interestRate: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" />
+              <input type="date" placeholder="Due Date" value={liabilityForm.dueDate} onChange={(e) => setLiabilityForm({...liabilityForm, dueDate: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" />
+              <select value={liabilityForm.status} onChange={(e) => setLiabilityForm({...liabilityForm, status: e.target.value})} className="w-full p-2 mb-3 border rounded-lg"><option>Active</option><option>Pending</option><option>Paid</option><option>Overdue</option></select>
+              <textarea placeholder="Notes" value={liabilityForm.notes} onChange={(e) => setLiabilityForm({...liabilityForm, notes: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" rows="2" />
+              <div className="flex gap-3"><button type="submit" className="flex-1 py-2 bg-red-600 text-white rounded-lg">Save</button><button type="button" onClick={() => setShowLiabilityForm(false)} className="flex-1 py-2 bg-gray-300 rounded-lg">Cancel</button></div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
