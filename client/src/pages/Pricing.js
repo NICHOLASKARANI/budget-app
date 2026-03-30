@@ -1,6 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CheckIcon, CreditCardIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { CheckIcon } from '@heroicons/react/24/outline';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
@@ -17,7 +16,7 @@ const pricingPlans = [
     description: 'Perfect for getting started'
   },
   {
-    name: 'Quarterly',
+    name: '3 Months',
     period: '3 months',
     originalPrice: 55.19,
     discountedPrice: 41.39,
@@ -104,7 +103,7 @@ function CheckoutForm({ plan, onSuccess }) {
               key={method.name}
               type="button"
               onClick={() => setSelectedMethod(method.type)}
-              className={p-2 border rounded-lg text-center }
+              className={'p-2 border rounded-lg text-center ' + (selectedMethod === method.type ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200')}
             >
               <div className="text-2xl">{method.icon}</div>
               <div className="text-xs">{method.name}</div>
@@ -126,7 +125,7 @@ function CheckoutForm({ plan, onSuccess }) {
         disabled={!stripe || loading}
         className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50"
       >
-        {loading ? 'Processing...' : Pay  USD}
+        {loading ? 'Processing...' : 'Pay ' + plan.discountedPrice + ' USD'}
       </button>
     </form>
   );
@@ -164,7 +163,7 @@ export default function Pricing() {
 
         <div className="grid md:grid-cols-4 gap-6 mb-12">
           {pricingPlans.map((plan) => (
-            <div key={plan.name} className={g-white rounded-2xl shadow-xl overflow-hidden }>
+            <div key={plan.name} className={'bg-white rounded-2xl shadow-xl overflow-hidden ' + (plan.popular ? 'ring-2 ring-indigo-600 transform scale-105' : '')}>
               {plan.popular && <div className="bg-indigo-600 text-white text-center py-1 text-sm">Most Popular</div>}
               <div className="p-6">
                 <h3 className="text-2xl font-bold">{plan.name}</h3>
