@@ -1,5 +1,14 @@
-﻿export const verifyToken = (req, res, next) => {
-    // For testing, we'll create a mock user
-    req.user = { id: 1, username: 'testuser' };
+﻿import jwt from 'jsonwebtoken';
+
+export const verifyToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) return res.sendStatus(401);
+  
+  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
     next();
+  });
 };

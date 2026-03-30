@@ -1,5 +1,14 @@
--- Create database
-CREATE DATABASE budget_app;
+﻿-- Drop existing tables if they exist (for clean setup)
+DROP TABLE IF EXISTS income CASCADE;
+DROP TABLE IF EXISTS expenses CASCADE;
+DROP TABLE IF EXISTS budgets CASCADE;
+DROP TABLE IF EXISTS savings_goals CASCADE;
+DROP TABLE IF EXISTS subscriptions CASCADE;
+DROP TABLE IF EXISTS assets CASCADE;
+DROP TABLE IF EXISTS liabilities CASCADE;
+DROP TABLE IF EXISTS net_worth CASCADE;
+DROP TABLE IF EXISTS settings CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
 -- Users table
 CREATE TABLE users (
@@ -8,10 +17,9 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     currency VARCHAR(3) DEFAULT 'USD',
-    monthly_budget DECIMAL(10, 2) DEFAULT 0,
-    starting_balance DECIMAL(10, 2) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    subscription_tier VARCHAR(20) DEFAULT 'free',
+    trial_ends_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Income table
@@ -21,10 +29,10 @@ CREATE TABLE income (
     date DATE NOT NULL,
     source VARCHAR(100) NOT NULL,
     category VARCHAR(50) NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
     description TEXT,
-    is_recurring BOOLEAN DEFAULT false,
-    recurring_frequency VARCHAR(20),
+    payment_method VARCHAR(20) DEFAULT 'bank',
+    location VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -36,19 +44,17 @@ CREATE TABLE expenses (
     name VARCHAR(100) NOT NULL,
     category VARCHAR(50) NOT NULL,
     type VARCHAR(20) CHECK (type IN ('Fixed', 'Variable')) NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
     description TEXT,
-    is_recurring BOOLEAN DEFAULT false,
-    recurring_frequency VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Budget categories table
-CREATE TABLE budget_categories (
+-- Budgets table
+CREATE TABLE budgets (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     category VARCHAR(50) NOT NULL,
-    budgeted_amount DECIMAL(10, 2) NOT NULL,
+    budget_amount DECIMAL(10,2) NOT NULL,
     month INTEGER NOT NULL,
     year INTEGER NOT NULL,
     UNIQUE(user_id, category, month, year)
@@ -59,11 +65,9 @@ CREATE TABLE savings_goals (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     goal_name VARCHAR(100) NOT NULL,
-    target_amount DECIMAL(10, 2) NOT NULL,
-    saved_amount DECIMAL(10, 2) DEFAULT 0,
+    target_amount DECIMAL(10,2) NOT NULL,
+    saved_amount DECIMAL(10,2) DEFAULT 0,
     target_date DATE,
-    icon VARCHAR(50),
-    color VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -72,11 +76,36 @@ CREATE TABLE subscriptions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     service_name VARCHAR(100) NOT NULL,
-    cost DECIMAL(10, 2) NOT NULL,
+    cost DECIMAL(10,2) NOT NULL,
     billing_cycle VARCHAR(20) CHECK (billing_cycle IN ('Monthly', 'Quarterly', 'Yearly')) NOT NULL,
     next_payment_date DATE NOT NULL,
     category VARCHAR(50) DEFAULT 'Subscriptions',
-    auto_pay BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Assets table
+CREATE TABLE assets (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    value DECIMAL(10,2) NOT NULL,
+    location VARCHAR(100),
+    condition VARCHAR(20) DEFAULT 'Good',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Liabilities table
+CREATE TABLE liabilities (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    interest_rate DECIMAL(5,2) DEFAULT 0,
+    due_date DATE,
+    status VARCHAR(20) DEFAULT 'Active',
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -85,48 +114,25 @@ CREATE TABLE subscriptions (
 CREATE TABLE net_worth (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    month INTEGER NOT NULL,
+    month VARCHAR(20) NOT NULL,
     year INTEGER NOT NULL,
-    assets DECIMAL(10, 2) DEFAULT 0,
-    liabilities DECIMAL(10, 2) DEFAULT 0,
+    assets DECIMAL(10,2) DEFAULT 0,
+    liabilities DECIMAL(10,2) DEFAULT 0,
+    net_worth DECIMAL(10,2) GENERATED ALWAYS AS (assets - liabilities) STORED,
     UNIQUE(user_id, month, year)
 );
 
--- Assets breakdown table
-CREATE TABLE assets (
+-- Settings table
+CREATE TABLE settings (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    value DECIMAL(10, 2) NOT NULL,
-    notes TEXT
+    setting_key VARCHAR(50) NOT NULL,
+    setting_value TEXT,
+    UNIQUE(user_id, setting_key)
 );
 
--- Liabilities breakdown table
-CREATE TABLE liabilities (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
-    interest_rate DECIMAL(5, 2),
-    notes TEXT
-);
-
--- Create indexes for better performance
+-- Create indexes for performance
 CREATE INDEX idx_income_user_date ON income(user_id, date);
 CREATE INDEX idx_expenses_user_date ON expenses(user_id, date);
+CREATE INDEX idx_budgets_user_month ON budgets(user_id, year, month);
 CREATE INDEX idx_subscriptions_next_payment ON subscriptions(next_payment_date);
-CREATE INDEX idx_budget_categories_user_month ON budget_categories(user_id, month, year);
-
--- Create updated_at trigger function
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
