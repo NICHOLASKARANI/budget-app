@@ -2,14 +2,6 @@
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { 
-  CurrencyDollarIcon, 
-  PaintBrushIcon,
-  BellAlertIcon,
-  DevicePhoneMobileIcon,
-  CloudArrowDownIcon,
-  ShieldCheckIcon
-} from '@heroicons/react/24/outline';
 
 const currencies = [
   { code: 'USD', symbol: '$', name: 'US Dollar', flag: '🇺🇸' },
@@ -53,7 +45,6 @@ export default function Settings() {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      
       const response = await api.get('/settings');
       if (response.data && response.data.length > 0) {
         const savedSettings = response.data.reduce((acc, setting) => {
@@ -91,7 +82,7 @@ export default function Settings() {
         localStorage.setItem('theme', 'light');
       }
       
-      toast.success('✅ Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       console.error('Save error:', error);
       toast.error('Failed to save settings: ' + (error.response?.data?.error || error.message));
@@ -116,17 +107,21 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Currency</label>
               <div className="grid grid-cols-4 gap-3">
-                {currencies.map((curr) => (
-                  <button
-                    key={curr.code}
-                    onClick={() => setSettings({ ...settings, currency: curr.code })}
-                    className={p-3 rounded-xl border-2 transition-all }
-                  >
-                    <div className="text-2xl">{curr.flag}</div>
-                    <div className="font-bold">{curr.symbol}</div>
-                    <div className="text-xs">{curr.code}</div>
-                  </button>
-                ))}
+                {currencies.map((curr) => {
+                  const isActive = settings.currency === curr.code;
+                  const buttonClass = "p-3 rounded-xl border-2 transition-all " + (isActive ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30" : "border-gray-200 dark:border-gray-700");
+                  return (
+                    <button
+                      key={curr.code}
+                      onClick={() => setSettings({ ...settings, currency: curr.code })}
+                      className={buttonClass}
+                    >
+                      <div className="text-2xl">{curr.flag}</div>
+                      <div className="font-bold">{curr.symbol}</div>
+                      <div className="text-xs">{curr.code}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -134,15 +129,19 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pay Frequency</label>
               <div className="grid grid-cols-4 gap-3">
-                {['Weekly', 'Bi-weekly', 'Monthly', 'Yearly'].map((freq) => (
-                  <button
-                    key={freq}
-                    onClick={() => setSettings({ ...settings, payFrequency: freq })}
-                    className={py-2 px-4 rounded-lg border-2 }
-                  >
-                    {freq}
-                  </button>
-                ))}
+                {['Weekly', 'Bi-weekly', 'Monthly', 'Yearly'].map((freq) => {
+                  const isActive = settings.payFrequency === freq;
+                  const freqClass = "py-2 px-4 rounded-lg border-2 " + (isActive ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-200 dark:border-gray-700");
+                  return (
+                    <button
+                      key={freq}
+                      onClick={() => setSettings({ ...settings, payFrequency: freq })}
+                      className={freqClass}
+                    >
+                      {freq}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -152,13 +151,13 @@ export default function Settings() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setSettings({ ...settings, theme: 'light' })}
-                  className={py-3 px-4 rounded-xl border-2 }
+                  className={"py-3 px-4 rounded-xl border-2 " + (settings.theme === 'light' ? "border-indigo-600 bg-indigo-50" : "border-gray-200")}
                 >
                   ☀️ Light
                 </button>
                 <button
                   onClick={() => setSettings({ ...settings, theme: 'dark' })}
-                  className={py-3 px-4 rounded-xl border-2 }
+                  className={"py-3 px-4 rounded-xl border-2 " + (settings.theme === 'dark' ? "border-indigo-600 bg-indigo-50" : "border-gray-200")}
                 >
                   🌙 Dark
                 </button>
@@ -177,9 +176,9 @@ export default function Settings() {
                   <span className="text-gray-700 dark:text-gray-300">{item.label}</span>
                   <button
                     onClick={() => toggleSetting(item.key)}
-                    className={elative inline-flex h-6 w-11 items-center rounded-full transition-colors }
+                    className={"relative inline-flex h-6 w-11 items-center rounded-full transition-colors " + (settings[item.key] ? "bg-indigo-600" : "bg-gray-300")}
                   >
-                    <span className={inline-block h-4 w-4 transform rounded-full bg-white transition-transform } />
+                    <span className={"inline-block h-4 w-4 transform rounded-full bg-white transition-transform " + (settings[item.key] ? "translate-x-6" : "translate-x-1")} />
                   </button>
                 </div>
               ))}
