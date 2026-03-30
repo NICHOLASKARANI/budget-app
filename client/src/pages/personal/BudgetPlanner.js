@@ -41,7 +41,7 @@ export default function BudgetPlanner() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['budgets', selectedMonth, selectedYear]);
-        toast.success('Budget updated successfully!');
+        toast.success('Budget updated!');
         setEditingCategory(null);
         setBudgetAmount('');
       },
@@ -60,16 +60,6 @@ export default function BudgetPlanner() {
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  const getDiffClass = (isOver) => {
-    return isOver ? 'text-red-600' : 'text-green-600';
-  };
-
-  const getProgressColor = (isOver, progress) => {
-    if (isOver) return 'bg-red-600';
-    if (progress > 80) return 'bg-yellow-500';
-    return 'bg-green-600';
-  };
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -82,7 +72,10 @@ export default function BudgetPlanner() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-6 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <div><h1 className="text-3xl font-bold text-gray-900 dark:text-white">Budget Planner</h1><p className="text-gray-600 dark:text-gray-400">Plan and track your monthly budget</p></div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Budget Planner</h1>
+            <p className="text-gray-600 dark:text-gray-400">Plan and track your monthly budget</p>
+          </div>
           <div className="flex gap-3">
             <select value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))} className="p-2 border rounded-lg dark:bg-gray-800">
               {monthNames.map((month, idx) => (<option key={idx + 1} value={idx + 1}>{month}</option>))}
@@ -94,10 +87,22 @@ export default function BudgetPlanner() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow"><p className="text-gray-500 text-sm">Total Budget</p><p className="text-2xl font-bold">{user?.currency} {totalBudget.toFixed(2)}</p></div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow"><p className="text-gray-500 text-sm">Total Spent</p><p className="text-2xl font-bold text-red-600">{user?.currency} {totalSpent.toFixed(2)}</p></div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow"><p className="text-gray-500 text-sm">Remaining</p><p className="text-2xl font-bold text-green-600">{user?.currency} {(totalBudget - totalSpent).toFixed(2)}</p></div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow"><p className="text-gray-500 text-sm">Utilization</p><p className="text-2xl font-bold text-indigo-600">{utilization}%</p></div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow">
+            <p className="text-gray-500 text-sm">Total Budget</p>
+            <p className="text-2xl font-bold">{user?.currency} {totalBudget.toFixed(2)}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow">
+            <p className="text-gray-500 text-sm">Total Spent</p>
+            <p className="text-2xl font-bold text-red-600">{user?.currency} {totalSpent.toFixed(2)}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow">
+            <p className="text-gray-500 text-sm">Remaining</p>
+            <p className="text-2xl font-bold text-green-600">{user?.currency} {(totalBudget - totalSpent).toFixed(2)}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow">
+            <p className="text-gray-500 text-sm">Utilization</p>
+            <p className="text-2xl font-bold text-indigo-600">{utilization}%</p>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
@@ -108,9 +113,8 @@ export default function BudgetPlanner() {
             const diff = budgetVal - actual;
             const isOver = diff < 0;
             const progress = budgetVal > 0 ? (actual / budgetVal) * 100 : 0;
-            const progressColor = getProgressColor(isOver, progress);
-            const diffClass = getDiffClass(isOver);
-            const diffText = (diff >= 0 ? '+' : '') + user?.currency + ' ' + Math.abs(diff).toFixed(2);
+            const progressColor = isOver ? 'bg-red-600' : (progress > 80 ? 'bg-yellow-500' : 'bg-green-600');
+            const diffColor = isOver ? 'text-red-600' : 'text-green-600';
 
             return (
               <div key={cat} className="mb-6 last:mb-0 border-b last:border-0 pb-4">
@@ -119,7 +123,9 @@ export default function BudgetPlanner() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-sm">Budget: {user?.currency} {budgetVal.toFixed(2)}</span>
                     <span className="text-sm">Actual: {user?.currency} {actual.toFixed(2)}</span>
-                    <span className={	ext-sm font-medium }>{diffText}</span>
+                    <span className={"text-sm font-medium " + diffColor}>
+                      {diff >= 0 ? '+' : ''}{user?.currency} {Math.abs(diff).toFixed(2)}
+                    </span>
                     {editingCategory === cat ? (
                       <div className="flex gap-2">
                         <input type="number" value={budgetAmount} onChange={(e) => setBudgetAmount(e.target.value)} className="w-24 p-1 border rounded text-sm" autoFocus />
@@ -131,7 +137,9 @@ export default function BudgetPlanner() {
                     )}
                   </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2"><div className={h-2 rounded-full } style={{ width: Math.min(progress, 100) + '%' }} /></div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                  <div className={"h-2 rounded-full " + progressColor} style={{ width: Math.min(progress, 100) + '%' }} />
+                </div>
                 <div className="text-xs text-gray-500 mt-1">{progress.toFixed(1)}% used</div>
               </div>
             );
