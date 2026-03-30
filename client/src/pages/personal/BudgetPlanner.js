@@ -15,20 +15,33 @@ export default function BudgetPlanner() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [budgetAmount, setBudgetAmount] = useState('');
 
-  const { data: budgets } = useQuery(['budgets', selectedMonth, selectedYear], () => 
-    api.get('/budgets', { params: { month: selectedMonth, year: selectedYear } }).catch(() => [])
-  );
+  const { data: budgets = [], isLoading } = useQuery(['budgets', selectedMonth, selectedYear], async () => {
+    try {
+      const response = await api.get('/budgets', { params: { month: selectedMonth, year: selectedYear } });
+      return response.data || [];
+    } catch (err) {
+      return [];
+    }
+  });
 
-  const { data: expenses } = useQuery(['expenses', selectedMonth, selectedYear], () => 
-    api.get('/expenses', { params: { month: selectedMonth, year: selectedYear } }).catch(() => [])
-  );
+  const { data: expenses = [] } = useQuery(['expenses', selectedMonth, selectedYear], async () => {
+    try {
+      const response = await api.get('/expenses', { params: { month: selectedMonth, year: selectedYear } });
+      return response.data || [];
+    } catch (err) {
+      return [];
+    }
+  });
 
   const updateBudget = useMutation(
-    (data) => api.post('/budgets', data),
+    async (data) => {
+      const response = await api.post('/budgets', data);
+      return response.data;
+    },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries('budgets');
-        toast.success('Budget updated!');
+        queryClient.invalidateQueries(['budgets', selectedMonth, selectedYear]);
+        toast.success('Budget updated successfully!');
         setEditingCategory(null);
         setBudgetAmount('');
       },
@@ -36,126 +49,78 @@ export default function BudgetPlanner() {
     }
   );
 
-  const actualSpending = expenses?.reduce((acc, e) => { 
-    acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount); 
-    return acc; 
-  }, {}) || {};
+  const actualSpending = expenses.reduce((acc, e) => {
+    acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount);
+    return acc;
+  }, {});
 
-  const totalBudget = budgets?.reduce((sum, b) => sum + parseFloat(b.budget_amount), 0) || 0;
+  const totalBudget = budgets.reduce((sum, b) => sum + parseFloat(b.budget_amount), 0);
   const totalSpent = Object.values(actualSpending).reduce((a, b) => a + b, 0);
   const utilization = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : 0;
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f4f6', padding: '24px 16px' }}>
-      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h1 style={{ fontSize: '30px', fontWeight: 'bold', color: '#111827' }}>Budget Planner</h1>
-            <p style={{ color: '#6b7280' }}>Plan and track your monthly budget</p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <select 
-              value={selectedMonth} 
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))} 
-              style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', background: 'white' }}
-            >
-              {monthNames.map((month, idx) => (
-                <option key={idx + 1} value={idx + 1}>{month}</option>
-              ))}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-6 px-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <div><h1 className="text-3xl font-bold text-gray-900 dark:text-white">Budget Planner</h1><p className="text-gray-600 dark:text-gray-400">Plan and track your monthly budget</p></div>
+          <div className="flex gap-3">
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))} className="p-2 border rounded-lg dark:bg-gray-800">
+              {monthNames.map((month, idx) => (<option key={idx + 1} value={idx + 1}>{month}</option>))}
             </select>
-            <select 
-              value={selectedYear} 
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))} 
-              style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', background: 'white' }}
-            >
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="p-2 border rounded-lg dark:bg-gray-800">
+              <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
             </select>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>Total Budget</p>
-            <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{user?.currency} {totalBudget.toFixed(2)}</p>
-          </div>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>Total Spent</p>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626' }}>{user?.currency} {totalSpent.toFixed(2)}</p>
-          </div>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>Remaining</p>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>{user?.currency} {(totalBudget - totalSpent).toFixed(2)}</p>
-          </div>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>Utilization</p>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#6366f1' }}>{utilization}%</p>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow"><p className="text-gray-500 text-sm">Total Budget</p><p className="text-2xl font-bold">{user?.currency} {totalBudget.toFixed(2)}</p></div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow"><p className="text-gray-500 text-sm">Total Spent</p><p className="text-2xl font-bold text-red-600">{user?.currency} {totalSpent.toFixed(2)}</p></div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow"><p className="text-gray-500 text-sm">Remaining</p><p className="text-2xl font-bold text-green-600">{user?.currency} {(totalBudget - totalSpent).toFixed(2)}</p></div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow"><p className="text-gray-500 text-sm">Utilization</p><p className="text-2xl font-bold text-indigo-600">{utilization}%</p></div>
         </div>
 
-        <div style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
           {categories.map(cat => {
-            const budget = budgets?.find(b => b.category === cat);
+            const budget = budgets.find(b => b.category === cat);
             const budgetVal = budget ? parseFloat(budget.budget_amount) : 0;
             const actual = actualSpending[cat] || 0;
             const diff = budgetVal - actual;
             const isOver = diff < 0;
             const progress = budgetVal > 0 ? (actual / budgetVal) * 100 : 0;
-            let barColor = '#10b981';
-            if (isOver) barColor = '#ef4444';
-            else if (progress > 80) barColor = '#eab308';
+            const progressColor = isOver ? 'bg-red-600' : (progress > 80 ? 'bg-yellow-500' : 'bg-green-600');
 
             return (
-              <div key={cat} style={{ marginBottom: '24px', borderBottom: '1px solid #e5e7eb', paddingBottom: '16px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '600' }}>{cat}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '14px' }}>Budget: {user?.currency} {budgetVal.toFixed(2)}</span>
-                    <span style={{ fontSize: '14px' }}>Actual: {user?.currency} {actual.toFixed(2)}</span>
-                    <span style={{ fontSize: '14px', fontWeight: '500', color: isOver ? '#ef4444' : '#10b981' }}>
-                      {diff >= 0 ? '+' : ''}{user?.currency} {Math.abs(diff).toFixed(2)}
-                    </span>
+              <div key={cat} className="mb-6 last:mb-0 border-b last:border-0 pb-4">
+                <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+                  <span className="font-semibold w-28">{cat}</span>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-sm">Budget: {user?.currency} {budgetVal.toFixed(2)}</span>
+                    <span className="text-sm">Actual: {user?.currency} {actual.toFixed(2)}</span>
+                    <span className={	ext-sm font-medium }>{diff >= 0 ? '+' : ''}{user?.currency} {Math.abs(diff).toFixed(2)}</span>
                     {editingCategory === cat ? (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="number"
-                          value={budgetAmount}
-                          onChange={(e) => setBudgetAmount(e.target.value)}
-                          style={{ width: '96px', padding: '4px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px' }}
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => updateBudget.mutate({ category: cat, budget_amount: parseFloat(budgetAmount), month: selectedMonth, year: selectedYear })}
-                          style={{ padding: '4px 8px', background: '#6366f1', color: 'white', borderRadius: '4px', fontSize: '12px', border: 'none', cursor: 'pointer' }}
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => { setEditingCategory(null); setBudgetAmount(''); }}
-                          style={{ padding: '4px 8px', background: '#9ca3af', color: 'white', borderRadius: '4px', fontSize: '12px', border: 'none', cursor: 'pointer' }}
-                        >
-                          Cancel
-                        </button>
+                      <div className="flex gap-2">
+                        <input type="number" value={budgetAmount} onChange={(e) => setBudgetAmount(e.target.value)} className="w-24 p-1 border rounded text-sm" autoFocus />
+                        <button onClick={() => updateBudget.mutate({ category: cat, budget_amount: parseFloat(budgetAmount), month: selectedMonth, year: selectedYear })} className="px-2 py-1 bg-indigo-600 text-white rounded text-sm">Save</button>
+                        <button onClick={() => { setEditingCategory(null); setBudgetAmount(''); }} className="px-2 py-1 bg-gray-300 rounded text-sm">Cancel</button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => { setEditingCategory(cat); setBudgetAmount(budgetVal); }}
-                        style={{ color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer' }}
-                      >
-                        <PencilIcon style={{ width: '16px', height: '16px' }} />
-                      </button>
+                      <button onClick={() => { setEditingCategory(cat); setBudgetAmount(budgetVal); }} className="text-indigo-600"><PencilIcon className="h-4 w-4" /></button>
                     )}
                   </div>
                 </div>
-                <div style={{ width: '100%', background: '#e5e7eb', borderRadius: '9999px', height: '8px' }}>
-                  <div style={{ width: Math.min(progress, 100) + '%', background: barColor, borderRadius: '9999px', height: '8px' }} />
-                </div>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  {progress.toFixed(1)}% used
-                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2"><div className={h-2 rounded-full } style={{ width: Math.min(progress, 100) + '%' }} /></div>
+                <div className="text-xs text-gray-500 mt-1">{progress.toFixed(1)}% used</div>
               </div>
             );
           })}
