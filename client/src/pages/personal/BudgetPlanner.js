@@ -60,6 +60,16 @@ export default function BudgetPlanner() {
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+  const getDiffClass = (isOver) => {
+    return isOver ? 'text-red-600' : 'text-green-600';
+  };
+
+  const getProgressColor = (isOver, progress) => {
+    if (isOver) return 'bg-red-600';
+    if (progress > 80) return 'bg-yellow-500';
+    return 'bg-green-600';
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -98,7 +108,9 @@ export default function BudgetPlanner() {
             const diff = budgetVal - actual;
             const isOver = diff < 0;
             const progress = budgetVal > 0 ? (actual / budgetVal) * 100 : 0;
-            const progressColor = isOver ? 'bg-red-600' : (progress > 80 ? 'bg-yellow-500' : 'bg-green-600');
+            const progressColor = getProgressColor(isOver, progress);
+            const diffClass = getDiffClass(isOver);
+            const diffText = (diff >= 0 ? '+' : '') + user?.currency + ' ' + Math.abs(diff).toFixed(2);
 
             return (
               <div key={cat} className="mb-6 last:mb-0 border-b last:border-0 pb-4">
@@ -107,7 +119,7 @@ export default function BudgetPlanner() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-sm">Budget: {user?.currency} {budgetVal.toFixed(2)}</span>
                     <span className="text-sm">Actual: {user?.currency} {actual.toFixed(2)}</span>
-                    <span className={	ext-sm font-medium }>{diff >= 0 ? '+' : ''}{user?.currency} {Math.abs(diff).toFixed(2)}</span>
+                    <span className={	ext-sm font-medium }>{diffText}</span>
                     {editingCategory === cat ? (
                       <div className="flex gap-2">
                         <input type="number" value={budgetAmount} onChange={(e) => setBudgetAmount(e.target.value)} className="w-24 p-1 border rounded text-sm" autoFocus />
