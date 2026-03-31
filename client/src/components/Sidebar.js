@@ -87,6 +87,13 @@ export default function Sidebar() {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const getRotationClass = (section) => {
+    if (expandedSections[section]) {
+      return 'rotate-180';
+    }
+    return '';
+  };
+
   return (
     <>
       {/* Mobile menu button */}
@@ -126,7 +133,7 @@ export default function Sidebar() {
                 >
                   <span>{section.section}</span>
                   <svg
-                    className={h-4 w-4 transform transition-transform }
+                    className={'h-4 w-4 transform transition-transform ' + getRotationClass(section.section)}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"

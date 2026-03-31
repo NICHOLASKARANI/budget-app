@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import {
   CalendarIcon,
   CurrencyDollarIcon,
   CreditCardIcon,
-  ArrowTrendingUpIcon,
+  TrendingUpIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline';
 import {
@@ -36,19 +36,16 @@ export default function MonthlyDashboard() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [chartType, setChartType] = useState('area');
 
-  // Fetch monthly data
   const { data: monthlyData, isLoading } = useQuery(
     ['monthly-dashboard', selectedYear],
     () => api.get('/dashboard/monthly', { params: { year: selectedYear } }).then(res => res.data)
   );
 
-  // Fetch current month breakdown
   const { data: categoryData } = useQuery(
     ['category-breakdown', selectedYear, selectedMonth],
     () => api.get('/expenses/categories', { params: { year: selectedYear, month: selectedMonth } }).then(res => res.data)
   );
 
-  // Fetch daily data for current month
   const { data: dailyData } = useQuery(
     ['daily-data', selectedYear, selectedMonth],
     async () => {
@@ -57,7 +54,6 @@ export default function MonthlyDashboard() {
         api.get('/expenses', { params: { year: selectedYear, month: selectedMonth } })
       ]);
       
-      // Group by day
       const daily = {};
       [...incomeRes.data, ...expensesRes.data].forEach(item => {
         const day = format(new Date(item.date), 'dd');
@@ -80,6 +76,14 @@ export default function MonthlyDashboard() {
   const totalExpenses = currentMonthData?.expenses || 0;
   const savings = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? ((savings / totalIncome) * 100).toFixed(1) : 0;
+
+  const getChartButtonClass = (type) => {
+    const baseClass = 'px-4 py-2 rounded-lg font-medium transition-colors';
+    if (chartType === type) {
+      return baseClass + ' bg-indigo-600 text-white';
+    }
+    return baseClass + ' bg-gray-100 text-gray-600 hover:bg-gray-200';
+  };
 
   const renderChart = () => {
     switch (chartType) {
@@ -143,13 +147,13 @@ export default function MonthlyDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Monthly Dashboard</h1>
-            <p className="mt-2 text-sm md:text-base text-gray-600">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Monthly Dashboard</h1>
+            <p className="mt-2 text-sm md:text-base text-gray-600 dark:text-gray-400">
               Detailed view of your monthly finances
             </p>
           </div>
@@ -157,7 +161,7 @@ export default function MonthlyDashboard() {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="block w-32 pl-3 pr-10 py-2 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="block w-32 pl-3 pr-10 py-2 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                 <option key={month} value={month}>
@@ -168,9 +172,9 @@ export default function MonthlyDashboard() {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="block w-24 pl-3 pr-10 py-2 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="block w-24 pl-3 pr-10 py-2 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800"
             >
-              {[2024, 2025, 2026, 2027, 2028].map((year) => (
+              {[2024, 2025, 2026].map((year) => (
                 <option key={year} value={year}>{year}</option>
               ))}
             </select>
@@ -201,15 +205,15 @@ export default function MonthlyDashboard() {
         </div>
 
         {/* Chart Controls */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h3 className="text-lg font-semibold text-gray-900">Daily Breakdown</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Daily Breakdown</h3>
             <div className="flex gap-2">
               {['area', 'bar', 'line'].map((type) => (
                 <button
                   key={type}
                   onClick={() => setChartType(type)}
-                  className={px-4 py-2 rounded-lg font-medium transition-colors }
+                  className={getChartButtonClass(type)}
                 >
                   {type.charAt(0).toUpperCase() + type.slice(1)}
                 </button>
@@ -225,8 +229,8 @@ export default function MonthlyDashboard() {
 
         {/* Category Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Breakdown</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Category Breakdown</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -235,7 +239,7 @@ export default function MonthlyDashboard() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ category, percent }) => ${category} %}
+                    label={({ category, percent }) => category + ' ' + (percent * 100).toFixed(0) + '%'}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="total"
@@ -254,13 +258,13 @@ export default function MonthlyDashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Details</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Category Details</h3>
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {categoryData?.map((item) => (
-                <div key={item.category} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="font-medium text-gray-700">{item.category}</span>
-                  <span className="text-indigo-600 font-medium">
+                <div key={item.category} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">{item.category}</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">
                     {user?.currency} {parseFloat(item.total).toFixed(2)}
                   </span>
                 </div>
@@ -269,25 +273,25 @@ export default function MonthlyDashboard() {
           </div>
         </div>
 
-        {/* Top Transactions */}
-        <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Transactions</h3>
+        {/* Recent Transactions */}
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Transactions</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 text-sm font-medium text-gray-500">Date</th>
-                  <th className="text-left py-3 text-sm font-medium text-gray-500">Description</th>
-                  <th className="text-left py-3 text-sm font-medium text-gray-500">Category</th>
-                  <th className="text-right py-3 text-sm font-medium text-gray-500">Amount</th>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 text-sm font-medium text-gray-500 dark:text-gray-400">Date</th>
+                  <th className="text-left py-3 text-sm font-medium text-gray-500 dark:text-gray-400">Description</th>
+                  <th className="text-left py-3 text-sm font-medium text-gray-500 dark:text-gray-400">Category</th>
+                  <th className="text-right py-3 text-sm font-medium text-gray-500 dark:text-gray-400">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {dailyData?.slice(0, 10).map((day, idx) => (
-                  <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 text-sm text-gray-600">Day {day.day}</td>
-                    <td className="py-3 text-sm text-gray-800">Daily Summary</td>
-                    <td className="py-3 text-sm text-gray-600">-</td>
+                  <tr key={idx} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="py-3 text-sm text-gray-600 dark:text-gray-400">Day {day.day}</td>
+                    <td className="py-3 text-sm text-gray-800 dark:text-gray-300">Daily Summary</td>
+                    <td className="py-3 text-sm text-gray-600 dark:text-gray-400">-</td>
                     <td className="py-3 text-sm text-right">
                       <span className="text-green-600">+{user?.currency} {day.income?.toFixed(2) || '0.00'}</span>
                       <span className="mx-2">/</span>
