@@ -1,244 +1,191 @@
 ﻿const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { neon } = require('@neondatabase/serverless');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Database connection
-const sql = neon(process.env.DATABASE_URL || process.env.STORAGE_DATABASE_URL);
-
-// Configure CORS
+// CORS configuration
 app.use(cors({
-  origin: ['https://finovatrack.com', 'https://budget-app-client-lyart.vercel.app', 'http://localhost:3000'],
+  origin: ['https://www.finovatrack.com', 'https://finovatrack.com', 'https://budget-app-client-lyart.vercel.app', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
-// Email transporter configuration (using Ethereal for testing, replace with real SMTP)
-let transporter;
-try {
-  // For production, use your email service
-  // For now, create an Ethereal test account
-  transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
-    port: process.env.EMAIL_PORT || 587,
-    secure: false,
-    auth: {
-      user: process.env.EMAIL_USER || 'test@ethereal.email',
-      pass: process.env.EMAIL_PASS || 'testpass'
-    }
-  });
-  console.log('Email transporter configured');
-} catch (error) {
-  console.log('Email not configured, using console fallback');
-}
+// In-memory storage
+let users = [];
+let assets = [];
+let liabilities = [];
+let income = [];
+let expenses = [];
+let budgets = [];
+let goals = [];
+let subscriptions = [];
+let settings = [];
 
-// Store OTPs temporarily (in production, use Redis or database)
-const otpStore = new Map();
+let nextId = 1;
+const getNextId = () => nextId++;
 
-// Helper to send email
-const sendEmail = async (to, subject, html) => {
-  try {
-    if (transporter) {
-      const info = await transporter.sendMail({
-        from: '"FinovaTrack" <noreply@finovatrack.com>',
-        to,
-        subject,
-        html
-      });
-      return { success: true, messageId: info.messageId };
-    } else {
-      console.log([EMAIL] To: , Subject: );
-      return { success: true, simulated: true };
-    }
-  } catch (error) {
-    console.error('Email error:', error);
-    return { success: false, error: error.message };
+// Add demo user for testing
+const createDemoUser = async () => {
+  const existingUser = users.find(u => u.email === 'demo@finovatrack.com');
+  if (!existingUser) {
+    const hashedPassword = await bcrypt.hash('demo123', 10);
+    users.push({
+      id: getNextId(),
+      username: 'demo',
+      email: 'demo@finovatrack.com',
+      password: hashedPassword,
+      currency: 'USD'
+    });
+    console.log('Demo user created: demo@finovatrack.com / demo123');
   }
 };
 
-// Generate OTP
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+// OTP storage
+const otpStore = new Map();
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+// Initialize demo user
+createDemoUser();
 
 // ============ AUTH ROUTES ============
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString(), message: 'Server is running!' });
+});
+
+// Register
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, email, password, currency } = req.body;
+    console.log('Register:', { username, email });
     
-    const userExists = await sql('SELECT * FROM users WHERE email =  OR username = ', [email, username]);
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
     
-    if (userExists.length > 0) {
+    const existingUser = users.find(u => u.email === email);
+    if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
     
-    const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(password, salt);
-    
-    const newUser = await sql(
-      'INSERT INTO users (username, email, password_hash, currency) VALUES (, , , ) RETURNING id, username, email, currency',
-      [username, email, password_hash, currency || 'USD']
-    );
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = {
+      id: getNextId(),
+      username,
+      email,
+      password: hashedPassword,
+      currency: currency || 'USD'
+    };
+    users.push(newUser);
     
     const token = jwt.sign(
-      { id: newUser[0].id, username: newUser[0].username },
-      process.env.JWT_SECRET || 'your-secret-key'
+      { id: newUser.id, email: newUser.email, username: newUser.username },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
     );
     
-    res.json({ token, user: newUser[0] });
+    res.json({ token, user: { id: newUser.id, username: newUser.username, email: newUser.email, currency: newUser.currency } });
   } catch (error) {
-    console.error(error);
+    console.error('Register error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
+// Login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login:', { email });
     
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-    
-    const user = await sql('SELECT * FROM users WHERE email = ', [email]);
-    
-    if (user.length === 0) {
+    const user = users.find(u => u.email === email);
+    if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     
-    const validPassword = await bcrypt.compare(password, user[0].password_hash);
-    if (!validPassword) {
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     
     const token = jwt.sign(
-      { id: user[0].id, username: user[0].username },
-      process.env.JWT_SECRET || 'your-secret-key'
+      { id: user.id, email: user.email, username: user.username },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
     );
     
-    res.json({
-      token,
-      user: {
-        id: user[0].id,
-        username: user[0].username,
-        email: user[0].email,
-        currency: user[0].currency
-      }
-    });
+    res.json({ token, user: { id: user.id, username: user.username, email: user.email, currency: user.currency } });
   } catch (error) {
-    console.error(error);
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Forgot Password - Send OTP
+// Get current user
+app.get('/api/auth/me', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const user = users.find(u => u.id === decoded.id);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    res.json({ id: user.id, username: user.username, email: user.email, currency: user.currency });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// Forgot Password
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
+    console.log('Forgot password:', { email });
     
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-    
-    const user = await sql('SELECT * FROM users WHERE email = ', [email]);
-    
-    if (user.length === 0) {
+    const user = users.find(u => u.email === email);
+    if (!user) {
       return res.status(404).json({ error: 'No account found with this email' });
     }
     
     const otp = generateOTP();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
+    otpStore.set(email, { otp, expiresAt: Date.now() + 10 * 60 * 1000 });
+    console.log('OTP for', email, ':', otp);
     
-    otpStore.set(email, { otp, expiresAt });
-    
-    // Send OTP via email
-    const html = 
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9fafb;">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <div style="display: inline-block; background: #4f46e5; width: 50px; height: 50px; border-radius: 12px; text-align: center; line-height: 50px;">
-            <span style="color: white; font-size: 24px; font-weight: bold;">F</span>
-          </div>
-          <h1 style="color: #1f2937; margin-top: 10px;">FinovaTrack</h1>
-        </div>
-        
-        <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-          <h2 style="color: #1f2937; margin-top: 0;">Password Reset Request</h2>
-          <p style="color: #4b5563;">Hello,</p>
-          <p style="color: #4b5563;">We received a request to reset your password for your FinovaTrack account.</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <div style="display: inline-block; background: #f3f4f6; padding: 15px 30px; border-radius: 12px; font-size: 32px; letter-spacing: 5px; font-weight: bold; color: #4f46e5;">
-              
-            </div>
-          </div>
-          
-          <p style="color: #4b5563;">This code will expire in <strong>10 minutes</strong>.</p>
-          <p style="color: #4b5563;">If you didn't request this, please ignore this email.</p>
-          
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-          <p style="color: #9ca3af; font-size: 12px;">FinovaTrack - Smart Financial Management</p>
-        </div>
-      </div>
-    ;
-    
-    await sendEmail(email, 'Password Reset Request - FinovaTrack', html);
-    
-    res.json({ message: 'OTP sent to your email', expiresIn: 600 });
+    res.json({ message: 'OTP sent', demoOTP: otp });
   } catch (error) {
     console.error('Forgot password error:', error);
-    res.status(500).json({ error: 'Failed to send OTP' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Verify OTP
-app.post('/api/auth/verify-otp', async (req, res) => {
+app.post('/api/auth/verify-otp', (req, res) => {
   try {
     const { email, otp } = req.body;
-    
-    if (!email || !otp) {
-      return res.status(400).json({ error: 'Email and OTP are required' });
-    }
-    
     const stored = otpStore.get(email);
     
-    if (!stored) {
-      return res.status(400).json({ error: 'No OTP request found' });
-    }
+    if (!stored) return res.status(400).json({ error: 'No OTP request found' });
+    if (stored.expiresAt < Date.now()) return res.status(400).json({ error: 'OTP expired' });
+    if (stored.otp !== otp) return res.status(400).json({ error: 'Invalid OTP' });
     
-    if (stored.expiresAt < Date.now()) {
-      otpStore.delete(email);
-      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
-    }
-    
-    if (stored.otp !== otp) {
-      return res.status(400).json({ error: 'Invalid OTP' });
-    }
-    
-    // Generate a temporary token for password reset
-    const resetToken = jwt.sign(
-      { email, purpose: 'reset-password' },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '15m' }
-    );
-    
-    res.json({ 
-      message: 'OTP verified successfully',
-      resetToken
-    });
+    const resetToken = jwt.sign({ email, purpose: 'reset-password' }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '15m' });
+    res.json({ message: 'OTP verified', resetToken });
   } catch (error) {
-    console.error('Verify OTP error:', error);
-    res.status(500).json({ error: 'Verification failed' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -247,74 +194,524 @@ app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
     
-    if (!resetToken || !newPassword) {
-      return res.status(400).json({ error: 'Reset token and new password are required' });
-    }
+    if (!resetToken || !newPassword) return res.status(400).json({ error: 'Missing fields' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
     
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
+    const decoded = jwt.verify(resetToken, process.env.JWT_SECRET || 'your-secret-key');
+    if (decoded.purpose !== 'reset-password') return res.status(400).json({ error: 'Invalid token' });
     
-    let decoded;
-    try {
-      decoded = jwt.verify(resetToken, process.env.JWT_SECRET || 'your-secret-key');
-    } catch (err) {
-      return res.status(400).json({ error: 'Invalid or expired reset token' });
-    }
+    const userIndex = users.findIndex(u => u.email === decoded.email);
+    if (userIndex === -1) return res.status(404).json({ error: 'User not found' });
     
-    if (decoded.purpose !== 'reset-password') {
-      return res.status(400).json({ error: 'Invalid token purpose' });
-    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    users[userIndex].password = hashedPassword;
+    otpStore.delete(decoded.email);
     
-    const { email } = decoded;
-    
-    const user = await sql('SELECT * FROM users WHERE email = ', [email]);
-    
-    if (user.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const salt = await bcrypt.genSalt(10);
-    const newPasswordHash = await bcrypt.hash(newPassword, salt);
-    
-    await sql('UPDATE users SET password_hash =  WHERE email = ', [newPasswordHash, email]);
-    
-    // Clear OTP store
-    otpStore.delete(email);
-    
-    res.json({ message: 'Password reset successfully. You can now login with your new password.' });
+    res.json({ message: 'Password reset successfully' });
   } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({ error: 'Failed to reset password' });
+    res.status(400).json({ error: 'Invalid or expired token' });
   }
 });
 
-app.get('/api/auth/me', authenticateToken, async (req, res) => {
+// ============ NET WORTH ROUTES ============
+
+// Get assets
+app.get('/api/networth/assets', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
   try {
-    const user = await sql('SELECT id, username, email, currency FROM users WHERE id = ', [req.user.id]);
-    if (user.length === 0) return res.status(404).json({ error: 'User not found' });
-    res.json(user[0]);
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const userAssets = assets.filter(a => a.userId === decoded.id);
+    res.json(userAssets);
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.json([]);
   }
 });
 
-// Middleware to verify JWT
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+// Add asset
+app.post('/api/networth/assets', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
   
-  if (!token) return res.sendStatus(401);
-  
-  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-};
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const { name, type, value, location, condition, notes } = req.body;
+    
+    const newAsset = {
+      id: getNextId(),
+      userId: decoded.id,
+      name,
+      type,
+      value: parseFloat(value),
+      location: location || '',
+      condition: condition || 'Good',
+      notes: notes || '',
+      createdAt: new Date().toISOString()
+    };
+    assets.push(newAsset);
+    res.json(newAsset);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-// ... rest of your routes (income, expenses, budgets, etc.)
+// Delete asset
+app.delete('/api/networth/assets/:id', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const id = parseInt(req.params.id);
+    const assetIndex = assets.findIndex(a => a.id === id && a.userId === decoded.id);
+    
+    if (assetIndex === -1) return res.status(404).json({ error: 'Asset not found' });
+    assets.splice(assetIndex, 1);
+    res.json({ message: 'Deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get liabilities
+app.get('/api/networth/liabilities', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const userLiabilities = liabilities.filter(l => l.userId === decoded.id);
+    res.json(userLiabilities);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+// Add liability
+app.post('/api/networth/liabilities', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const { name, type, amount, interestRate, dueDate, status, notes } = req.body;
+    
+    const newLiability = {
+      id: getNextId(),
+      userId: decoded.id,
+      name,
+      type,
+      amount: parseFloat(amount),
+      interestRate: parseFloat(interestRate || 0),
+      dueDate: dueDate || null,
+      status: status || 'Active',
+      notes: notes || '',
+      createdAt: new Date().toISOString()
+    };
+    liabilities.push(newLiability);
+    res.json(newLiability);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete liability
+app.delete('/api/networth/liabilities/:id', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const id = parseInt(req.params.id);
+    const liabilityIndex = liabilities.findIndex(l => l.id === id && l.userId === decoded.id);
+    
+    if (liabilityIndex === -1) return res.status(404).json({ error: 'Liability not found' });
+    liabilities.splice(liabilityIndex, 1);
+    res.json({ message: 'Deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get net worth history
+app.get('/api/networth', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const userAssets = assets.filter(a => a.userId === decoded.id);
+    const userLiabilities = liabilities.filter(l => l.userId === decoded.id);
+    const totalAssets = userAssets.reduce((sum, a) => sum + a.value, 0);
+    const totalLiabilities = userLiabilities.reduce((sum, l) => sum + l.amount, 0);
+    
+    res.json([{
+      month: new Date().toLocaleString('default', { month: 'long' }),
+      year: new Date().getFullYear(),
+      assets: totalAssets,
+      liabilities: totalLiabilities,
+      net_worth: totalAssets - totalLiabilities
+    }]);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+// ============ INCOME ROUTES ============
+app.get('/api/income', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    res.json(income.filter(i => i.userId === decoded.id));
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.post('/api/income', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const newIncome = { id: getNextId(), userId: decoded.id, ...req.body, amount: parseFloat(req.body.amount) };
+    income.push(newIncome);
+    res.json(newIncome);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ EXPENSES ROUTES ============
+app.get('/api/expenses', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    res.json(expenses.filter(e => e.userId === decoded.id));
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.post('/api/expenses', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const newExpense = { id: getNextId(), userId: decoded.id, ...req.body, amount: parseFloat(req.body.amount) };
+    expenses.push(newExpense);
+    res.json(newExpense);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ GOALS ROUTES ============
+app.get('/api/goals', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    res.json(goals.filter(g => g.userId === decoded.id));
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.post('/api/goals', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const newGoal = { id: getNextId(), userId: decoded.id, ...req.body, target_amount: parseFloat(req.body.target_amount), saved_amount: parseFloat(req.body.saved_amount || 0) };
+    goals.push(newGoal);
+    res.json(newGoal);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/goals/:id', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const id = parseInt(req.params.id);
+    const goalIndex = goals.findIndex(g => g.id === id && g.userId === decoded.id);
+    
+    if (goalIndex === -1) return res.status(404).json({ error: 'Goal not found' });
+    goals[goalIndex].saved_amount = parseFloat(req.body.saved_amount);
+    res.json(goals[goalIndex]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/goals/:id', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const id = parseInt(req.params.id);
+    goals = goals.filter(g => !(g.id === id && g.userId === decoded.id));
+    res.json({ message: 'Deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ SUBSCRIPTIONS ROUTES ============
+app.get('/api/subscriptions', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    res.json(subscriptions.filter(s => s.userId === decoded.id));
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.post('/api/subscriptions', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const newSub = { id: getNextId(), userId: decoded.id, ...req.body, cost: parseFloat(req.body.cost) };
+    subscriptions.push(newSub);
+    res.json(newSub);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/subscriptions/:id', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const id = parseInt(req.params.id);
+    subscriptions = subscriptions.filter(s => !(s.id === id && s.userId === decoded.id));
+    res.json({ message: 'Deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ BUDGETS ROUTES ============
+app.get('/api/budgets', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const month = parseInt(req.query.month) || new Date().getMonth() + 1;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    res.json(budgets.filter(b => b.userId === decoded.id && b.month === month && b.year === year));
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.post('/api/budgets', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const { category, budget_amount, month, year } = req.body;
+    
+    const existingIndex = budgets.findIndex(b => b.userId === decoded.id && b.category === category && b.month === month && b.year === year);
+    if (existingIndex !== -1) {
+      budgets[existingIndex].budget_amount = parseFloat(budget_amount);
+      res.json(budgets[existingIndex]);
+    } else {
+      const newBudget = { id: getNextId(), userId: decoded.id, category, budget_amount: parseFloat(budget_amount), month, year };
+      budgets.push(newBudget);
+      res.json(newBudget);
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ SETTINGS ROUTES ============
+app.get('/api/settings', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    res.json(settings.filter(s => s.userId === decoded.id));
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.put('/api/settings', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const userSettings = req.body;
+    
+    for (const [key, value] of Object.entries(userSettings)) {
+      const existingIndex = settings.findIndex(s => s.userId === decoded.id && s.setting_key === key);
+      if (existingIndex !== -1) {
+        settings[existingIndex].setting_value = value.toString();
+      } else {
+        settings.push({ id: getNextId(), userId: decoded.id, setting_key: key, setting_value: value.toString() });
+      }
+    }
+    res.json({ message: 'Settings saved' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ DASHBOARD ROUTES ============
+app.get('/api/dashboard/monthly', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    const result = [];
+    for (let i = 1; i <= 12; i++) {
+      const monthIncome = income.filter(inc => inc.userId === decoded.id && new Date(inc.date).getMonth() + 1 === i && new Date(inc.date).getFullYear() === year).reduce((sum, inc) => sum + inc.amount, 0);
+      const monthExpenses = expenses.filter(exp => exp.userId === decoded.id && new Date(exp.date).getMonth() + 1 === i && new Date(exp.date).getFullYear() === year).reduce((sum, exp) => sum + exp.amount, 0);
+      result.push({ month: months[i - 1], month_num: i, income: monthIncome, expenses: monthExpenses, savings: monthIncome - monthExpenses });
+    }
+    res.json(result);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.get('/api/dashboard/annual', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json({ total_income: 0, total_expenses: 0 });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    
+    const total_income = income.filter(inc => inc.userId === decoded.id && new Date(inc.date).getFullYear() === year).reduce((sum, inc) => sum + inc.amount, 0);
+    const total_expenses = expenses.filter(exp => exp.userId === decoded.id && new Date(exp.date).getFullYear() === year).reduce((sum, exp) => sum + exp.amount, 0);
+    
+    res.json({ total_income, total_expenses });
+  } catch (error) {
+    res.json({ total_income: 0, total_expenses: 0 });
+  }
+});
+
+app.get('/api/expenses/categories', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json([]);
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const month = parseInt(req.query.month) || new Date().getMonth() + 1;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    
+    const categoryTotals = {};
+    expenses.filter(exp => exp.userId === decoded.id && new Date(exp.date).getMonth() + 1 === month && new Date(exp.date).getFullYear() === year).forEach(exp => {
+      categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+    });
+    
+    res.json(Object.entries(categoryTotals).map(([category, total]) => ({ category, total })));
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+// ============ REPORT ROUTES ============
+app.get('/api/reports/financial', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.json({ total_income: 0, total_expenses: 0, net_savings: 0, categories: [] });
+  
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const year = new Date().getFullYear();
+    
+    const total_income = income.filter(inc => inc.userId === decoded.id && new Date(inc.date).getFullYear() === year).reduce((sum, inc) => sum + inc.amount, 0);
+    const total_expenses = expenses.filter(exp => exp.userId === decoded.id && new Date(exp.date).getFullYear() === year).reduce((sum, exp) => sum + exp.amount, 0);
+    
+    const categoryTotals = {};
+    expenses.filter(exp => exp.userId === decoded.id && new Date(exp.date).getFullYear() === year).forEach(exp => {
+      categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+    });
+    
+    res.json({
+      period: 'year',
+      total_income,
+      total_expenses,
+      net_savings: total_income - total_expenses,
+      categories: Object.entries(categoryTotals).map(([category, total]) => ({ category, total }))
+    });
+  } catch (error) {
+    res.json({ total_income: 0, total_expenses: 0, net_savings: 0, categories: [] });
+  }
+});
+
+app.get('/api/reports/support', (req, res) => {
+  res.json({
+    period: 'Monthly',
+    total_tickets: 234,
+    avg_response_time: 1.3,
+    avg_resolution_time: 4.5,
+    csat_score: 94,
+    common_issues: [
+      { issue: 'Login Problems', count: 45 },
+      { issue: 'Payment Failed', count: 38 },
+      { issue: 'Account Setup', count: 32 }
+    ]
+  });
+});
 
 app.listen(PORT, () => {
-  console.log('Server running on port ' + PORT);
+  console.log('FinovaTrack Server running on port ' + PORT);
 });
