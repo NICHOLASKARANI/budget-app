@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { TrashIcon, CreditCardIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -10,6 +10,7 @@ export default function SubscriptionTracker() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingSub, setEditingSub] = useState(null);
   const [formData, setFormData] = useState({ service_name: '', cost: '', billing_cycle: 'Monthly', next_payment_date: format(new Date(), 'yyyy-MM-dd'), category: 'Subscriptions' });
 
   const { data: subscriptions = [], isLoading } = useQuery('subscriptions', async () => {
@@ -27,14 +28,27 @@ export default function SubscriptionTracker() {
   }, {
     onSuccess: () => {
       queryClient.invalidateQueries('subscriptions');
-      toast.success('Subscription added successfully!');
+      toast.success('Subscription added!');
       setShowForm(false);
       setFormData({ service_name: '', cost: '', billing_cycle: 'Monthly', next_payment_date: format(new Date(), 'yyyy-MM-dd'), category: 'Subscriptions' });
     },
-    onError: () => toast.error('Failed to add subscription')
+    onError: () => toast.error('Failed to add')
   });
 
-  const deleteSubscription = useMutation(async (id) => {
+  const updateMutation = useMutation(async ({ id, data }) => {
+    const response = await api.put(/subscriptions/, data);
+    return response.data;
+  }, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('subscriptions');
+      toast.success('Subscription updated!');
+      setShowForm(false);
+      setEditingSub(null);
+    },
+    onError: () => toast.error('Failed to update')
+  });
+
+  const deleteMutation = useMutation(async (id) => {
     await api.delete(/subscriptions/);
     return id;
   }, {
@@ -42,8 +56,29 @@ export default function SubscriptionTracker() {
       queryClient.invalidateQueries('subscriptions');
       toast.success('Subscription deleted');
     },
-    onError: () => toast.error('Failed to delete subscription')
+    onError: () => toast.error('Failed to delete')
   });
+
+  const handleEdit = (sub) => {
+    setEditingSub(sub);
+    setFormData({
+      service_name: sub.service_name,
+      cost: sub.cost,
+      billing_cycle: sub.billing_cycle,
+      next_payment_date: sub.next_payment_date,
+      category: sub.category || 'Subscriptions'
+    });
+    setShowForm(true);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editingSub) {
+      updateMutation.mutate({ id: editingSub.id, data: formData });
+    } else {
+      addMutation.mutate(formData);
+    }
+  };
 
   const totalMonthly = subscriptions.reduce((sum, sub) => {
     if (sub.billing_cycle === 'Monthly') return sum + parseFloat(sub.cost);
@@ -52,16 +87,14 @@ export default function SubscriptionTracker() {
     return sum;
   }, 0);
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
-  }
+  if (isLoading) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-6 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div><h1 className="text-3xl font-bold text-gray-900 dark:text-white">Subscription Tracker</h1><p className="text-gray-600 dark:text-gray-400">Manage your recurring payments</p></div>
-          <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">+ Add Subscription</button>
+          <button onClick={() => { setEditingSub(null); setShowForm(true); }} className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">+ Add Subscription</button>
         </div>
 
         <div className="grid grid-cols-4 gap-4 mb-8">
@@ -74,21 +107,35 @@ export default function SubscriptionTracker() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700"><tr><th className="p-3 text-left">Service</th><th className="p-3 text-left">Cost</th><th className="p-3 text-left">Cycle</th><th className="p-3 text-left">Next Payment</th><th className="p-3 text-left">Actions</th></tr></thead>
-            <tbody>{subscriptions.map(sub => (<tr key={sub.id} className="border-t"><td className="p-3 flex items-center gap-2"><CreditCardIcon className="h-5 w-5 text-indigo-600" />{sub.service_name}</td><td className="p-3">{user?.currency} {parseFloat(sub.cost).toFixed(2)}</td><td className="p-3"><span className="px-2 py-1 bg-indigo-100 rounded-full text-sm">{sub.billing_cycle}</span></td><td className="p-3">{format(new Date(sub.next_payment_date), 'MMM dd, yyyy')}</td><td className="p-3"><button onClick={() => deleteSubscription.mutate(sub.id)} className="text-red-500"><TrashIcon className="h-5 w-5" /></button></td></tr>))}</tbody>
-           </table>
+            <tbody>
+              {subscriptions.length === 0 ? (
+                <tr><td colSpan="5" className="p-4 text-center text-gray-500">No subscriptions yet. Add your first subscription!</td></tr>
+              ) : (
+                subscriptions.map(sub => (
+                  <tr key={sub.id} className="border-t">
+                    <td className="p-3 flex items-center gap-2"><CreditCardIcon className="h-5 w-5 text-indigo-600" />{sub.service_name}</td>
+                    <td className="p-3">{user?.currency} {parseFloat(sub.cost).toFixed(2)}</td>
+                    <td className="p-3"><span className="px-2 py-1 bg-indigo-100 rounded-full text-sm">{sub.billing_cycle}</span></td>
+                    <td className="p-3">{format(new Date(sub.next_payment_date), 'MMM dd, yyyy')}</td>
+                    <td className="p-3"><button onClick={() => handleEdit(sub)} className="text-indigo-600 mr-2"><PencilIcon className="h-5 w-5" /></button><button onClick={() => { if (window.confirm('Delete this subscription?')) deleteMutation.mutate(sub.id); }} className="text-red-500"><TrashIcon className="h-5 w-5" /></button></td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold mb-4">Add Subscription</h2>
-            <form onSubmit={(e) => { e.preventDefault(); addMutation.mutate(formData); }}>
+            <h2 className="text-xl font-bold mb-4">{editingSub ? 'Edit Subscription' : 'Add Subscription'}</h2>
+            <form onSubmit={handleSubmit}>
               <input type="text" placeholder="Service Name" value={formData.service_name} onChange={(e) => setFormData({...formData, service_name: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" required />
               <input type="number" step="0.01" placeholder="Cost" value={formData.cost} onChange={(e) => setFormData({...formData, cost: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" required />
               <select value={formData.billing_cycle} onChange={(e) => setFormData({...formData, billing_cycle: e.target.value})} className="w-full p-2 mb-3 border rounded-lg"><option>Monthly</option><option>Quarterly</option><option>Yearly</option></select>
               <input type="date" value={formData.next_payment_date} onChange={(e) => setFormData({...formData, next_payment_date: e.target.value})} className="w-full p-2 mb-3 border rounded-lg" required />
-              <div className="flex gap-3"><button type="submit" className="flex-1 py-2 bg-indigo-600 text-white rounded-lg">Save</button><button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2 bg-gray-300 rounded-lg">Cancel</button></div>
+              <div className="flex gap-3"><button type="submit" className="flex-1 py-2 bg-indigo-600 text-white rounded-lg">Save</button><button type="button" onClick={() => { setShowForm(false); setEditingSub(null); }} className="flex-1 py-2 bg-gray-300 rounded-lg">Cancel</button></div>
             </form>
           </div>
         </div>
