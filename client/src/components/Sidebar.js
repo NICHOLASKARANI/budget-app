@@ -114,9 +114,7 @@ export default function Sidebar() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center space-x-3 p-6 border-b border-gray-700">
-            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-xl font-bold">F</span>
-            </div>
+            <img src="/logo.png" alt="FinovaTrack" className="w-10 h-10 rounded-lg" />
             <div>
               <h1 className="font-bold text-lg">FinovaTrack</h1>
               <p className="text-xs text-gray-400">Smart Financial Management</p>
