@@ -13,14 +13,12 @@ export const AuthProvider = ({ children }) => {
 
   const apiUrl = process.env.REACT_APP_API_URL || 'https://budget-app-server-two.vercel.app/api';
 
-  // Configure axios defaults when token changes
+  // Configure axios defaults
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
-      console.log('Token set in axios headers');
     } else {
       delete axios.defaults.headers.common['Authorization'];
-      console.log('Token removed from axios headers');
     }
   }, [token]);
 
@@ -33,10 +31,8 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        console.log('Verifying token...');
         const response = await axios.get(apiUrl + '/auth/me');
         setUser(response.data);
-        console.log('Token verified, user:', response.data);
       } catch (error) {
         console.error('Token verification failed:', error);
         localStorage.removeItem('token');
@@ -52,23 +48,12 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log('Attempting login...');
-      const response = await axios.post(apiUrl + '/auth/login', {
-        email,
-        password
-      });
-      
-      console.log('Login response:', response.data);
-      
+      const response = await axios.post(apiUrl + '/auth/login', { email, password });
       const { token: newToken, user: userData } = response.data;
-      
-      // Store token
       localStorage.setItem('token', newToken);
       setToken(newToken);
       setUser(userData);
-      
       toast.success('Logged in successfully!');
-      console.log('Login successful, token stored');
       return true;
     } catch (error) {
       console.error('Login error:', error.response?.data || error.message);
@@ -79,24 +64,17 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password, currency) => {
     try {
-      console.log('Attempting registration...');
       const response = await axios.post(apiUrl + '/auth/register', {
         username,
         email,
         password,
         currency
       });
-      
-      console.log('Registration response:', response.data);
-      
       const { token: newToken, user: userData } = response.data;
-      
       localStorage.setItem('token', newToken);
       setToken(newToken);
       setUser(userData);
-      
       toast.success('Registered successfully!');
-      console.log('Registration successful, token stored');
       return true;
     } catch (error) {
       console.error('Registration error:', error.response?.data || error.message);
@@ -105,8 +83,46 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const forgotPassword = async (email) => {
+    try {
+      const response = await axios.post(apiUrl + '/auth/forgot-password', { email });
+      if (response.data.demoOTP) {
+        console.log('Demo OTP:', response.data.demoOTP);
+      }
+      toast.success('OTP sent to your email!');
+      return { success: true, demoOTP: response.data.demoOTP };
+    } catch (error) {
+      console.error('Forgot password error:', error.response?.data || error.message);
+      toast.error(error.response?.data?.error || 'Failed to send OTP');
+      return { success: false };
+    }
+  };
+
+  const verifyOTP = async (email, otp) => {
+    try {
+      const response = await axios.post(apiUrl + '/auth/verify-otp', { email, otp });
+      toast.success('OTP verified!');
+      return { success: true, resetToken: response.data.resetToken };
+    } catch (error) {
+      console.error('OTP verification error:', error.response?.data || error.message);
+      toast.error(error.response?.data?.error || 'Invalid OTP');
+      return { success: false };
+    }
+  };
+
+  const resetPassword = async (resetToken, newPassword) => {
+    try {
+      await axios.post(apiUrl + '/auth/reset-password', { resetToken, newPassword });
+      toast.success('Password reset successfully!');
+      return true;
+    } catch (error) {
+      console.error('Password reset error:', error.response?.data || error.message);
+      toast.error(error.response?.data?.error || 'Failed to reset password');
+      return false;
+    }
+  };
+
   const logout = () => {
-    console.log('Logging out...');
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -114,7 +130,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, forgotPassword, verifyOTP, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
