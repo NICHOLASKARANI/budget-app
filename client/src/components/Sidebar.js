@@ -87,14 +87,6 @@ export default function Sidebar() {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Helper function for rotation class
-  const getRotationClass = (section) => {
-    if (expandedSections[section]) {
-      return 'rotate-180';
-    }
-    return '';
-  };
-
   return (
     <>
       {/* Mobile menu button */}
@@ -116,11 +108,11 @@ export default function Sidebar() {
           {/* Logo */}
           <div className="flex items-center space-x-3 p-6 border-b border-gray-700">
             <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-xl font-bold">F$</span>
+              <span className="text-xl font-bold">F</span>
             </div>
             <div>
-              <h1 className="font-bold text-lg">Financial Dashboard</h1>
-              <p className="text-xs text-gray-400">Enterprise Suite 2026</p>
+              <h1 className="font-bold text-lg">FinovaTrack</h1>
+              <p className="text-xs text-gray-400">Smart Financial Management</p>
             </div>
           </div>
 
@@ -134,7 +126,7 @@ export default function Sidebar() {
                 >
                   <span>{section.section}</span>
                   <svg
-                    className={'h-4 w-4 transform transition-transform ' + getRotationClass(section.section)}
+                    className={h-4 w-4 transform transition-transform }
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -179,11 +171,11 @@ export default function Sidebar() {
             ))}
           </nav>
 
-          {/* Enterprise Badge */}
+          {/* Brand Badge */}
           <div className="p-4 border-t border-gray-700">
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 rounded-xl">
-              <p className="text-xs text-indigo-200">Enterprise Suite</p>
-              <p className="text-sm font-bold text-white">Financial Dashboard</p>
+              <p className="text-xs text-indigo-200">FinovaTrack</p>
+              <p className="text-sm font-bold text-white">Smart Financial Management</p>
               <div className="flex items-center mt-2 text-indigo-200 text-xs">
                 <SparklesIcon className="h-3 w-3 mr-1" />
                 Personal · Business · Support

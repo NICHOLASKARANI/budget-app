@@ -6,7 +6,8 @@ import {
   CurrencyDollarIcon,
   ShieldCheckIcon,
   ArrowTrendingUpIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
 export default function Landing() {
@@ -23,7 +24,7 @@ export default function Landing() {
     },
     {
       name: 'Multi-Currency',
-      description: 'Support for USD, EUR, GBP, CAD, AUD with live conversion',
+      description: 'Support for USD, EUR, GBP, CAD, AUD, and African currencies',
       icon: CurrencyDollarIcon
     },
     {
@@ -49,9 +50,14 @@ export default function Landing() {
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-90"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
+          <div className="mb-6">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl">
+              <span className="text-3xl font-bold text-indigo-600">F</span>
+            </div>
+          </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl">
-            Premium Annual Budget
-            <span className="block text-indigo-200">Spreadsheet, Reimagined</span>
+            FinovaTrack
+            <span className="block text-indigo-200">Smart Financial Management</span>
           </h1>
           <p className="mt-3 max-w-md mx-auto text-base text-indigo-100 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
             Transform your finances with our complete budget management solution. 
@@ -62,7 +68,7 @@ export default function Landing() {
               to="/register"
               className="px-8 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 md:py-4 md:text-lg md:px-10"
             >
-              Start Free Trial
+              Get Started
             </Link>
             <Link
               to="/pricing"
@@ -114,17 +120,41 @@ export default function Landing() {
         <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
             <span className="block">Ready to take control?</span>
-            <span className="block text-indigo-200">Start your free trial today.</span>
+            <span className="block text-indigo-200">Start your journey today.</span>
           </h2>
           <p className="mt-4 text-lg leading-6 text-indigo-200">
             Join thousands of users who've transformed their financial lives.
           </p>
           <Link
-            to="/register"
+            to="/pricing"
             className="mt-8 w-full inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 sm:w-auto"
           >
-            Sign up for free
+            View Pricing Plans
           </Link>
+        </div>
+      </div>
+
+      {/* Trust Badges */}
+      <div className="bg-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">10,000+ Users</p>
+            </div>
+            <div>
+              <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">99.9% Uptime</p>
+            </div>
+            <div>
+              <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">24/7 Support</p>
+            </div>
+            <div>
+              <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">SSL Encrypted</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
