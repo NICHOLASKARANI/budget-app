@@ -12,7 +12,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Landing from './pages/Landing';
 import Pricing from './pages/Pricing';
 import Login from './pages/Login';
-import Register from './pages/Register';
+import Register from './pages/Register';`nimport ForgotPassword from './pages/ForgotPassword';
 
 // Personal Budget Pages
 import StartHere from './pages/personal/StartHere';
@@ -79,7 +79,7 @@ function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/register" element={<Register />} />`n            <Route path="/forgot-password" element={<ForgotPassword />} />
               
               {/* Protected Routes - Personal */}
               <Route path="/personal" element={<PrivateRoute><Layout /></PrivateRoute>}>
@@ -137,3 +137,4 @@ function App() {
 }
 
 export default App;
+

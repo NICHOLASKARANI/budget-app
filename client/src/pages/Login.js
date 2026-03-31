@@ -7,17 +7,20 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     const success = await login(email, password);
     setIsLoading(false);
     if (success) {
-      // Redirect to personal dashboard after successful login
       navigate('/personal/start-here');
+    } else {
+      setError('Invalid email or password. Please check your credentials and try again.');
     }
   };
 
@@ -26,14 +29,19 @@ export default function Login() {
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl mb-4">
-            <SparklesIcon className="h-10 w-10 text-indigo-600" />
+            <span className="text-3xl font-bold text-indigo-600">F</span>
           </div>
-          <h2 className="text-4xl font-extrabold text-white">Budget Tracker</h2>
-          <p className="mt-2 text-lg text-indigo-100">Premium Annual 2026</p>
+          <h2 className="text-4xl font-extrabold text-white">FinovaTrack</h2>
+          <p className="mt-2 text-lg text-indigo-100">Smart Financial Management</p>
         </div>
 
         <div className="bg-white py-8 px-6 shadow-2xl rounded-2xl sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
@@ -68,6 +76,12 @@ export default function Login() {
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
               </div>
+            </div>
+
+            <div className="flex items-center justify-end">
+              <Link to="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">
+                Forgot password?
+              </Link>
             </div>
 
             <div>
