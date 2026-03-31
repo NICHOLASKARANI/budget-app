@@ -1,7 +1,9 @@
 ﻿import axios from 'axios';
 
+const API_URL = 'https://budget-app-server-two.vercel.app/api';
+
 const api = axios.create({
-  baseURL: 'https://budget-app-server-two.vercel.app/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -15,9 +17,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 api.interceptors.response.use(
