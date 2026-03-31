@@ -19,11 +19,13 @@ export default function ForgotPassword() {
     try {
       const response = await api.post('/auth/forgot-password', { email });
       toast.success('OTP sent to your email!');
+      
       if (response.data.demoOTP) {
-        console.log('Demo OTP:', response.data.demoOTP);
-        // Fix: Use toast with correct string syntax
-        toast(Demo OTP:  (check console), { duration: 8000 });
+        const otpCode = response.data.demoOTP;
+        console.log('YOUR OTP CODE:', otpCode);
+        alert('Your OTP code is: ' + otpCode + '\nCheck console for details.');
       }
+      
       setStep('otp');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to send OTP');
