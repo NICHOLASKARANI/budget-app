@@ -1,5 +1,5 @@
-﻿import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+﻿import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
@@ -23,6 +23,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import Landing from './pages/Landing';
 import Pricing from './pages/Pricing';
+import AdminPanel from './pages/admin/AdminPanel';
 
 // Business pages
 import BusinessDashboard from './pages/business/Dashboard';
@@ -61,6 +62,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/admin" element={<AdminPanel />} />
             
             {/* Protected Routes - Personal */}
             <Route path="/personal" element={<PrivateRoute><Layout /></PrivateRoute>}>

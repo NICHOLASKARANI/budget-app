@@ -1,9 +1,9 @@
 ﻿import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
-const stripePromise = loadStripe('pk_test_your_publishable_key');
+import api from '../services/api';
+import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 const pricingPlans = [
   {
@@ -12,7 +12,6 @@ const pricingPlans = [
     originalPrice: 17.99,
     discountedPrice: 12.60,
     discount: 30,
-    priceId: 'price_monthly',
     description: 'Perfect for getting started'
   },
   {
@@ -21,7 +20,6 @@ const pricingPlans = [
     originalPrice: 55.19,
     discountedPrice: 41.39,
     discount: 25,
-    priceId: 'price_quarterly',
     description: 'Best for short-term commitment'
   },
   {
@@ -30,7 +28,6 @@ const pricingPlans = [
     originalPrice: 164.99,
     discountedPrice: 115.49,
     discount: 30,
-    priceId: 'price_annual',
     description: 'Most popular - save 30%',
     popular: true
   },
@@ -40,111 +37,67 @@ const pricingPlans = [
     originalPrice: 779.99,
     discountedPrice: 623.99,
     discount: 20,
-    priceId: 'price_lifetime',
     description: 'One-time payment, unlimited access'
   }
 ];
 
 const paymentMethods = [
-  { name: 'Visa', icon: '💳', type: 'card' },
+  { name: 'Visa', icon: '💳', type: 'card', cardNumber: '4478 1500 0287 8906', cvv: '685', expiry: '03/31' },
   { name: 'Mastercard', icon: '💳', type: 'card' },
   { name: 'Amex', icon: '💳', type: 'card' },
   { name: 'Discover', icon: '💳', type: 'card' },
   { name: 'PayPal', icon: '🅿️', type: 'paypal' },
-  { name: 'M-Pesa', icon: '📱', type: 'mpesa' },
+  { name: 'M-Pesa', icon: '📱', type: 'mpesa', phone: '0721 669850' },
   { name: 'Afrigo', icon: '🌍', type: 'afrigo' },
   { name: 'Verve', icon: '💳', type: 'card' }
 ];
 
-function CheckoutForm({ plan, onSuccess }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [loading, setLoading] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState('card');
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!stripe || !elements) return;
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: plan.discountedPrice * 100, currency: 'usd', paymentMethod: selectedMethod })
-      });
-      const { clientSecret } = await response.json();
-      
-      const { error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card: elements.getElement(CardElement) }
-      });
-      
-      if (confirmError) {
-        setError(confirmError.message);
-      } else {
-        onSuccess();
-      }
-    } catch (err) {
-      setError('Payment failed. Please try again.');
-    }
-    setLoading(false);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Payment Method</label>
-        <div className="grid grid-cols-4 gap-2">
-          {paymentMethods.map(method => (
-            <button
-              key={method.name}
-              type="button"
-              onClick={() => setSelectedMethod(method.type)}
-              className={'p-2 border rounded-lg text-center ' + (selectedMethod === method.type ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200')}
-            >
-              <div className="text-2xl">{method.icon}</div>
-              <div className="text-xs">{method.name}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-      
-      {selectedMethod === 'card' && (
-        <div className="border rounded-lg p-3">
-          <CardElement options={{ hidePostalCode: true }} />
-        </div>
-      )}
-      
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      
-      <button
-        type="submit"
-        disabled={!stripe || loading}
-        className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50"
-      >
-        {loading ? 'Processing...' : 'Pay ' + plan.discountedPrice + ' USD'}
-      </button>
-    </form>
-  );
-}
-
 export default function Pricing() {
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showPayment, setShowPayment] = useState(false);
-  const [trialActive, setTrialActive] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [processing, setProcessing] = useState(false);
 
-  const handleFreeTrial = () => {
-    localStorage.setItem('trial_started', new Date().toISOString());
-    setTrialActive(true);
-    window.location.href = '/register';
+  const handleSubscribe = async (plan) => {
+    if (!user) {
+      toast.error('Please login first to subscribe');
+      window.location.href = '/login';
+      return;
+    }
+    setSelectedPlan(plan);
+    setShowPayment(true);
   };
 
-  const handlePaymentSuccess = () => {
-    alert('Payment successful! Welcome to Premium!');
-    window.location.href = '/personal/start-here';
+  const handlePaymentSubmit = async () => {
+    if (!paymentMethod) {
+      toast.error('Please select a payment method');
+      return;
+    }
+    
+    setProcessing(true);
+    
+    try {
+      const paymentData = {
+        user_id: user.id,
+        plan: selectedPlan.name,
+        amount: selectedPlan.discountedPrice,
+        payment_method: paymentMethod,
+        transaction_id: 'TXN_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
+        status: 'completed'
+      };
+      
+      await api.post('/admin/payments', paymentData);
+      
+      toast.success('Payment successful! You now have access to ' + selectedPlan.name + ' plan.');
+      setShowPayment(false);
+      window.location.href = '/personal/start-here';
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error('Payment failed. Please try again.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -152,13 +105,7 @@ export default function Pricing() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Plan</h2>
-          <p className="text-xl text-gray-600">Start with a 7-day free trial, no credit card required</p>
-          <button
-            onClick={handleFreeTrial}
-            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition"
-          >
-            🎁 Start 7-Day Free Trial
-          </button>
+          <p className="text-xl text-gray-600">Select the plan that works best for you</p>
         </div>
 
         <div className="grid md:grid-cols-4 gap-6 mb-12">
@@ -177,7 +124,7 @@ export default function Pricing() {
                   <span className="ml-2 text-green-600 font-semibold">Save {plan.discount}%</span>
                 </div>
                 <button
-                  onClick={() => { setSelectedPlan(plan); setShowPayment(true); }}
+                  onClick={() => handleSubscribe(plan)}
                   className="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition"
                 >
                   Choose Plan
@@ -200,14 +147,70 @@ export default function Pricing() {
         </div>
 
         {showPayment && selectedPlan && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold mb-4">Complete Payment</h2>
-              <p className="mb-4">Plan: <strong>{selectedPlan.name}</strong> -  USD</p>
-              <Elements stripe={stripePromise}>
-                <CheckoutForm plan={selectedPlan} onSuccess={handlePaymentSuccess} />
-              </Elements>
-              <button onClick={() => setShowPayment(false)} className="mt-4 w-full py-2 border rounded-lg">Cancel</button>
+              <p className="mb-2">Plan: <strong>{selectedPlan.name}</strong></p>
+              <p className="mb-4">Amount: <strong className="text-green-600"> USD</strong></p>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2">Select Payment Method</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {paymentMethods.map(method => (
+                    <button
+                      key={method.name}
+                      type="button"
+                      onClick={() => setPaymentMethod(method.type)}
+                      className={'p-2 border rounded-lg text-center ' + (paymentMethod === method.type ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200')}
+                    >
+                      <div className="text-2xl">{method.icon}</div>
+                      <div className="text-xs">{method.name}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {paymentMethod === 'card' && (
+                <div className="space-y-3 mb-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-600">Test Card Number:</p>
+                    <p className="font-mono text-sm">4478 1500 0287 8906</p>
+                    <p className="text-xs text-gray-500 mt-1">CVV: 685 | Expiry: 03/31</p>
+                  </div>
+                  <input type="text" placeholder="Card Number" className="w-full p-2 border rounded-lg" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="text" placeholder="MM/YY" className="p-2 border rounded-lg" />
+                    <input type="text" placeholder="CVV" className="p-2 border rounded-lg" />
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'mpesa' && (
+                <div className="space-y-3 mb-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-600">M-Pesa Paybill:</p>
+                    <p className="font-mono text-lg font-bold">0721 669850</p>
+                    <p className="text-xs text-gray-500 mt-1">Account: FinovaTrack</p>
+                  </div>
+                  <input type="text" placeholder="M-Pesa Phone Number" className="w-full p-2 border rounded-lg" />
+                </div>
+              )}
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={handlePaymentSubmit}
+                  disabled={processing}
+                  className="flex-1 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {processing ? 'Processing...' : 'Pay $' + selectedPlan.discountedPrice}
+                </button>
+                <button
+                  onClick={() => setShowPayment(false)}
+                  className="flex-1 py-3 bg-gray-200 rounded-lg hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}
